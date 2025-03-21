@@ -25,8 +25,8 @@ actor CKBoost {
 
   // Initialize state
   private let state = StateModule.State(nextBoostId);
-  private let boostRequestManager = BoostRequestModule.BoostRequestManager(state);
   private let providerManager = ProviderModule.ProviderManager(state);
+  private let boostRequestManager = BoostRequestModule.BoostRequestManager(state, providerManager);
 
   // Pre-upgrade
   system func preupgrade() {
@@ -58,14 +58,24 @@ actor CKBoost {
 
   // Provider Management
   public shared(msg) func registerProvider() : async Result.Result<Types.LiquidityProvider, Text> {
+    // limit provider registration to racif-2ns2g-himer-ehzmk-q3sxc-emyrr-ozvkf-76gvp-fmuhk-lkrlq-yae for now 
+    if (msg.caller != Principal.fromText("racif-2ns2g-himer-ehzmk-q3sxc-emyrr-ozvkf-76gvp-fmuhk-lkrlq-yae")) {
+      return #err("Provider registration is currently limited to specific principals.");
+    };
     providerManager.registerProvider(msg.caller)
   };
 
   public shared(msg) func addLiquidity(args: Types.AddLiquidityArgs) : async Result.Result<Types.Transaction, Text> {
+    if (msg.caller != Principal.fromText("racif-2ns2g-himer-ehzmk-q3sxc-emyrr-ozvkf-76gvp-fmuhk-lkrlq-yae")) {
+      return #err("Provider registration is currently limited to specific principals.");
+    };
     await providerManager.addLiquidity(msg.caller, args)
   };
 
   public shared(msg) func withdrawLiquidity(args: Types.WithdrawLiquidityArgs) : async Result.Result<Types.Transaction, Text> {
+    if (msg.caller != Principal.fromText("racif-2ns2g-himer-ehzmk-q3sxc-emyrr-ozvkf-76gvp-fmuhk-lkrlq-yae")) {
+      return #err("Provider registration is currently limited to specific principals.");
+    };
     await providerManager.withdrawLiquidity(msg.caller, args)
   };
 

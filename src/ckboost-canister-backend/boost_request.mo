@@ -17,9 +17,10 @@ import StateModule "./state";
 import Minter "./minter";
 import BtcUtils "./btc_utils";
 import Constants "./constants";
+import ProviderModule "./provider";
 
 module {
-  public class BoostRequestManager(state: StateModule.State) {
+  public class BoostRequestManager(state: StateModule.State, providerManager: ProviderModule.ProviderManager) {
     let ckBTCMinter : Minter.CkBtcMinterInterface = actor(Constants.CKBTC_MINTER_CANISTER_ID);
 
     public func getBTCAddress(subaccount: Types.Subaccount) : async Text {
@@ -96,6 +97,29 @@ module {
     ) : async Result.Result<Types.BoostRequest, Text> {
       if (args.amount <= 0.0) {
         return #err("Amount must be greater than 0");
+      };
+
+      // Validate preferred provider if specified
+      switch (args.preferredProvider) {
+        case (?provider) {
+          switch (providerManager.getProvider(provider)) {
+            case (null) {
+              return #err("Preferred provider does not exist");
+            };
+            case (?providerData) {
+              if (not providerData.isActive) {
+                return #err("Preferred provider is not active");
+              };
+              
+              if (providerData.availableBalance < args.amount) {
+                return #err("Preferred provider has insufficient available balance");
+              };
+            };
+          };
+        };
+        case (null) {
+            return #err("Not supporting empty preferred provders at the moment");
+        };
       };
 
       let boostId = state.getNextBoostId();
