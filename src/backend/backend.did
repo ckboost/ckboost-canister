@@ -1,0 +1,80 @@
+type BoostId = nat;
+type BoosterPoolId = nat;
+type Subaccount = blob;
+type Amount = nat;
+type Timestamp = int;
+type Fee = float64;
+
+type BoostStatus = variant {
+  pending;
+  active;
+  completed;
+  cancelled;
+};
+
+type BoosterPool = record {
+  id: BoosterPoolId;
+  owner: principal;
+  fee: Fee;
+  subaccount: Subaccount;
+  availableAmount: Amount;
+  totalBoosted: Amount;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+type BoostRequest = record {
+  id: BoostId;
+  owner: principal;
+  amount: Amount;
+  fee: Fee;
+  receivedBTC: Amount;
+  btcAddress: opt text;
+  subaccount: Subaccount;
+  status: BoostStatus;
+  matchedBoosterPool: opt BoosterPoolId;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+type BoostRequestResult = variant {
+  ok: BoostRequest;
+  err: text;
+};
+
+type BoosterPoolResult = variant {
+  ok: BoosterPool;
+  err: text;
+};
+
+type TextResult = variant {
+  ok: text;
+  err: text;
+};
+
+service : {
+  // Helper functions
+  "ckBTCToSatoshis": (float64) -> (nat);
+  "satoshisToCkBTC": (nat) -> (float64);
+  "getCanisterPrincipal": () -> (text) query;
+  "getDirectBTCAddress": () -> (text);
+
+  // Original functions
+  "greet": (text) -> (text) query;
+  "whoami": () -> (text);
+  
+  // Boost request functions
+  "registerBoostRequest": (Amount, Fee) -> (BoostRequestResult);
+  "updateReceivedBTC": (BoostId, Amount) -> (BoostRequestResult);
+  "getBoostRequestBTCAddress": (BoostId) -> (TextResult);
+  "checkBTCDeposit": (BoostId) -> (BoostRequestResult);
+  "getBoostRequest": (BoostId) -> (opt BoostRequest) query;
+  "getUserBoostRequests": (principal) -> (vec BoostRequest) query;
+  "getAllBoostRequests": () -> (vec BoostRequest) query;
+  
+  // Booster pool functions
+  "registerBoosterPool": (Fee) -> (BoosterPoolResult);
+  "getBoosterPool": (BoosterPoolId) -> (opt BoosterPool) query;
+  "getUserBoosterPools": (principal) -> (vec BoosterPool) query;
+  "getAllBoosterPools": () -> (vec BoosterPool) query;
+}
