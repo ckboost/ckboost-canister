@@ -4,7 +4,9 @@ import Error "mo:base/Error";
 import Result "mo:base/Result";
 import Time "mo:base/Time";
 import Nat64 "mo:base/Nat64";
+import Int64 "mo:base/Int64";
 import Nat "mo:base/Nat";
+import Float "mo:base/Float";
 import Buffer "mo:base/Buffer";
 import Iter "mo:base/Iter";
 
@@ -18,25 +20,20 @@ module {
   // Define a class that takes a state object
   public class BoostRequestManager(state: StateModule.State) {
     // Constants
-    let CANISTER_PRINCIPAL: Text = "75egi-7qaaa-aaaao-qj6ma-cai";
+    let CANISTER_PRINCIPAL: Text = "b5hua-hiaaa-aaaae-qcuvq-cai";
     let ckBTCMinter : Minter.CkBtcMinterInterface = actor(Minter.CKBTC_MINTER_CANISTER_ID);
 
-    // Get a BTC address for a boost request from the ckBTC minter
     public func getBTCAddress(subaccount: Types.Subaccount) : async Text {
       try {
         let canisterPrincipal = Principal.fromText(CANISTER_PRINCIPAL);
-        Debug.print("Calling ckBTC minter with principal: " # Principal.toText(canisterPrincipal));
         
         let args = {
           owner = ?canisterPrincipal;
           subaccount = ?subaccount;
         };
-        
         let btcAddress = await ckBTCMinter.get_btc_address(args);
-        Debug.print("Successfully got BTC address: " # btcAddress);
         return btcAddress;
       } catch (e) {
-        Debug.print("Error in getBTCAddress: " # Error.message(e));
         throw Error.reject("Error getting BTC address: " # Error.message(e));
       };
     };
@@ -50,7 +47,6 @@ module {
         case (?request) {
           try {
             let canisterPrincipal = Principal.fromText(BtcUtils.CANISTER_PRINCIPAL);
-            Debug.print("Checking BTC deposits for boost request " # Nat.toText(boostId));
             
             let args = {
               owner = ?canisterPrincipal;
@@ -62,7 +58,10 @@ module {
             switch (updateResult) {
               case (#Ok(result)) {
                 Debug.print("Found deposits: " # Nat64.toText(result.amount) # " satoshis");
-                let updatedRequest = await updateReceivedBTC(boostId, Nat64.toNat(result.amount));
+                // Convert satoshis to BTC (1 BTC = 100,000,000 satoshis)
+                let satoshisInt64 = Int64.fromNat64(result.amount);
+                let btcAmount : Float = Float.fromInt64(satoshisInt64) / 100000000.0;
+                let updatedRequest = await updateReceivedBTC(boostId, btcAmount);
                 return updatedRequest;
               };
               case (#Err(error)) {
@@ -92,13 +91,13 @@ module {
     };
 
     // Register a new boost request
-    public func registerBoostRequest(caller: Principal, amount: Types.Amount, fee: Types.Fee) : async Result.Result<Types.BoostRequest, Text> {
-      if (amount == 0) {
+    public func registerBoostRequest(caller: Principal, amount: Types.Amount, fee: Types.Fee, preferredBPPrincipal: ?Principal) : async Result.Result<Types.BoostRequest, Text> {
+      if (amount <= 0.0) {
         return #err("Amount must be greater than 0");
       };
       
-      if (fee < 0.0 or fee > 1.0) {
-        return #err("Fee must be between 0% and 100%");
+      if (fee < 0.0 or fee > 2.0) {
+        return #err("Fee must be between 0% and 200%");
       };
       
       let boostId = state.getNextBoostId();
@@ -111,11 +110,12 @@ module {
         owner = caller;
         amount = amount;
         fee = fee;
-        receivedBTC = 0;
+        receivedBTC = 0.0;
         btcAddress = null;
         subaccount = subaccount;
         status = #pending;
         matchedBoosterPool = null;
+        preferredBPPrincipal = preferredBPPrincipal;
         createdAt = now;
         updatedAt = now;
       };
@@ -160,6 +160,7 @@ module {
             subaccount = request.subaccount;
             status = request.status;
             matchedBoosterPool = request.matchedBoosterPool;
+            preferredBPPrincipal = request.preferredBPPrincipal;
             createdAt = request.createdAt;
             updatedAt = Time.now();
           };
@@ -171,9 +172,7 @@ module {
     };
 
     // Update BTC address for a boost request
-    public func updateBTCAddress(boostId: Types.BoostId, btcAddress: Text) : async Result.Result<Types.BoostRequest, Text> {
-      Debug.print("Updating BTC address for boost request " # Nat.toText(boostId) # " to " # btcAddress);
-      
+    public func updateBTCAddress(boostId: Types.BoostId, btcAddress: Text) : async Result.Result<Types.BoostRequest, Text> {      
       switch (state.boostRequests.get(boostId)) {
         case (null) {
           Debug.print("Boost request not found: " # Nat.toText(boostId));
@@ -190,6 +189,7 @@ module {
             subaccount = request.subaccount;
             status = request.status;
             matchedBoosterPool = request.matchedBoosterPool;
+            preferredBPPrincipal = request.preferredBPPrincipal;
             createdAt = request.createdAt;
             updatedAt = Time.now();
           };

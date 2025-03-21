@@ -32,10 +32,10 @@ actor CKBoost {
   private let boosterPoolManager = BoosterPoolModule.BoosterPoolManager(state);
   
   // Constants
-  private let CANISTER_PRINCIPAL: Text = "75egi-7qaaa-aaaao-qj6ma-cai";
+  private let CANISTER_PRINCIPAL: Text = "b5hua-hiaaa-aaaae-qcuvq-cai";
   private let ckBTCMinter : Minter.CkBtcMinterInterface = actor(Minter.CKBTC_MINTER_CANISTER_ID);
+  private let FIXED_FEE: Types.Fee = 1.5;
   
-  // System functions for stable storage
   system func preupgrade() {
     boostRequestEntries := Iter.toArray(state.boostRequests.entries());
     boosterPoolEntries := Iter.toArray(state.boosterPools.entries());
@@ -64,67 +64,21 @@ actor CKBoost {
     state.nextBoosterPoolId := nextBoosterPoolId;
   };
 
-  // Boost Request Functions
-  public shared(msg) func registerBoostRequest(amount: Types.Amount, fee: Types.Fee) : async Result.Result<Types.BoostRequest, Text> {
-    await boostRequestManager.registerBoostRequest(msg.caller, amount, fee);
-  };
-  
-  public func checkBTCDeposit(boostId: Types.BoostId) : async Result.Result<Types.BoostRequest, Text> {
-    await boostRequestManager.checkBTCDeposit(boostId);
-  };
-  
-  public func getBoostRequestBTCAddress(boostId: Types.BoostId) : async Result.Result<Text, Text> {
-    await boostRequestManager.getBoostRequestBTCAddress(boostId);
-  };
-  
-  public func updateReceivedBTC(boostId: Types.BoostId, receivedAmount: Types.Amount) : async Result.Result<Types.BoostRequest, Text> {
-    await boostRequestManager.updateReceivedBTC(boostId, receivedAmount);
-  };
-  
-  public query func getBoostRequest(id: Types.BoostId) : async ?Types.BoostRequest {
-    boostRequestManager.getBoostRequest(id);
-  };
-  
-  public query func getUserBoostRequests(user: Principal) : async [Types.BoostRequest] {
-    boostRequestManager.getUserBoostRequests(user);
-  };
-  
-  public query func getAllBoostRequests() : async [Types.BoostRequest] {
-    boostRequestManager.getAllBoostRequests();
+  public func registerBoostRequest(args: Types.RegisterBoostRequestArgs) : async Result.Result<Types.BoostRequest, Text> {
+    if (args.amount <= 0.0) {
+      return #err("Amount must be greater than 0");
+    };
+    await boostRequestManager.registerBoostRequest(args.user, args.amount, FIXED_FEE, args.preferredBPPrincipal);
   };
 
-  // Booster Pool Functions
-  public shared(msg) func registerBoosterPool(fee: Types.Fee) : async Result.Result<Types.BoosterPool, Text> {
-    await boosterPoolManager.registerBoosterPool(msg.caller, fee);
-  };
-  
-  public func updateAvailableAmount(poolId: Types.BoosterPoolId, amount: Types.Amount) : async Result.Result<Types.BoosterPool, Text> {
-    boosterPoolManager.updateAvailableAmount(poolId, amount);
-  };
-  
-  public func updateTotalBoosted(poolId: Types.BoosterPoolId, amount: Types.Amount) : async Result.Result<Types.BoosterPool, Text> {
-    boosterPoolManager.updateTotalBoosted(poolId, amount);
-  };
-  
-  public query func getBoosterPool(id: Types.BoosterPoolId) : async ?Types.BoosterPool {
-    boosterPoolManager.getBoosterPool(id);
-  };
-  
-  public query func getUserBoosterPools(user: Principal) : async [Types.BoosterPool] {
-    boosterPoolManager.getUserBoosterPools(user);
-  };
-  
-  public query func getAllBoosterPools() : async [Types.BoosterPool] {
-    boosterPoolManager.getAllBoosterPools();
+  public shared(msg) func registerPool(args: Types.RegisterPoolArgs) : async Result.Result<Types.BoosterPool, Text> {
+    if (Principal.toText(msg.caller) != Types.POOL_ADMIN_PRINCIPAL) {
+      return #err("Unauthorized: only pool admin can register pools");
+    };
+    await boosterPoolManager.registerPool(args.fee);
   };
 
-  // Utility Functions
-  public query func getCanisterPrincipal() : async Text {
-    return CANISTER_PRINCIPAL;
-  };
-
-  // Direct method to get a BTC address for testing
-  public func getDirectBTCAddress() : async Text {
-    await BtcUtils.getDirectBTCAddress();
+  public query func getAllPools() : async [Types.BoosterPool] {
+    boosterPoolManager.getAllPools()
   };
 }

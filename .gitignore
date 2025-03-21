@@ -23,8 +23,11 @@ dist/
 
 # environment variables
 .env
-.txt
+*.txt
+
 
 # cursor
 cursor/*.*
 cursor/*
+
+canister_ids.json
