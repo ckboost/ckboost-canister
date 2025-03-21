@@ -1,12 +1,13 @@
 import Principal "mo:base/Principal";
 import Time "mo:base/Time";
 import Blob "mo:base/Blob";
+import Nat "mo:base/Nat";
+import Nat8 "mo:base/Nat8";
 
 module {
   // Core Types
   public type BoostId = Nat;
-  public type BoosterPoolId = Nat;
-  public type Subaccount = Blob;
+  public type Subaccount = [Nat8];
   public type Amount = Float;
   public type Timestamp = Int;
   public type Fee = Float;
@@ -18,55 +19,86 @@ module {
     #cancelled;
   };
 
+  public type TransactionType = {
+    #deposit;
+    #withdrawal;
+    #boost;
+  };
+
   // Domain Types
   public type LiquidityProvider = {
-    poolId: BoosterPoolId;
-    provider: Principal;
-    amount: Amount;
+    id: Principal;
+    subaccount: Subaccount;
+    totalBalance: Amount;
+    availableBalance: Amount;
+    lockedBalance: Amount;
+    totalTransactions: Nat;
+    isActive: Bool;
     createdAt: Timestamp;
     updatedAt: Timestamp;
   };
 
-  public type BoosterPool = {
-    id: BoosterPoolId;
-    owner: Principal;
-    fee: Fee;
+  public type Transaction = {
+    id: Nat;
+    provider: Principal;
+    transactionType: TransactionType;
+    amount: Amount;
+    fee: ?Fee;
+    status: {
+      #pending;
+      #completed;
+      #failed;
+    };
+    boostRequestId: ?BoostId;
+    memo: ?Text;
     createdAt: Timestamp;
-    updatedAt: Timestamp;
+    completedAt: ?Timestamp;
   };
 
   public type BoostRequest = {
     id: BoostId;
     owner: Principal;
     amount: Amount;
-    fee: Fee;
+    maxFee: Fee;
     receivedBTC: Amount;
     btcAddress: ?Text;
     subaccount: Subaccount;
     status: BoostStatus;
-    matchedBoosterPool: ?BoosterPoolId;
-    preferredBPPrincipal: ?Principal;
+    matchedProvider: ?Principal;
+    preferredProvider: ?Principal;
     createdAt: Timestamp;
     updatedAt: Timestamp;
   };
 
   // API Types
-  public type RegisterBoostRequestArgs = {
-    user: Principal;
-    amount: Amount;
-    fee: ?Fee;
-    preferredBPPrincipal: ?Principal;
-  };
-
-  public type RegisterPoolArgs = {
-    fee: Fee;
-  };
-
   public type AddLiquidityArgs = {
-    poolId: BoosterPoolId;
     amount: Amount;
+  };
+
+  public type WithdrawLiquidityArgs = {
+    amount: Amount;
+  };
+
+  public type RegisterBoostRequestArgs = {
+    amount: Amount;
+    maxFee: ?Fee;
+    preferredProvider: ?Principal;
+  };
+
+  // Account Types
+  public type Account = {
+    owner: Principal;
+    subaccount: ?Subaccount;
+  };
+
+  public type Balance = {
+    total: Amount;
+    available: Amount;
+    locked: Amount;
   };
 
   // Constants
-  public let POOL_ADMIN_PRINCIPAL: Text = "racif-2ns2g-himer-ehzmk-q3sxc-emyrr-ozvkf-76gvp-fmuhk-lkrlq-yae";
+  public let MIN_DEPOSIT_AMOUNT: Float = 0.0005; // Minimum deposit in ckBTC
+  public let DEFAULT_FEE_PERCENTAGE: Float = 0.1; // 0.1%
+  public let MAX_FEE_PERCENTAGE: Float = 2.0; // 0%
 } 
