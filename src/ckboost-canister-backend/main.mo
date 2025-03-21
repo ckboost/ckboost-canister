@@ -104,4 +104,21 @@ actor CKBoost {
   public query func getTransactionsByProvider(provider: Principal) : async [Types.Transaction] {
     state.getTransactionsByProvider(provider)
   };
+
+  // Query functions for boost requests
+  public query func getBoostRequestsByProvider(provider: Principal) : async [Types.BoostRequest] {
+    boostRequestManager.getBoostRequestsByProvider(provider)
+  };
+
+  public query func getBoostRequestsByStatus(status: Types.BoostStatus) : async [Types.BoostRequest] {
+    boostRequestManager.getBoostRequestsByStatus(status)
+  };
+
+  public query func getPendingBoostRequestsForProvider(provider: Principal) : async [Types.BoostRequest] {
+    boostRequestManager.getPendingBoostRequestsForProvider(provider)
+  };
+
+  public query func getBoostRequestsByProviderAndStatus(provider: Principal, status: Types.BoostStatus) : async [Types.BoostRequest] {
+    boostRequestManager.getBoostRequestsByProviderAndStatus(provider, status)
+  };
 }

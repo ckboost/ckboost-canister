@@ -10,6 +10,7 @@ import Float "mo:base/Float";
 import Buffer "mo:base/Buffer";
 import Iter "mo:base/Iter";
 import Blob "mo:base/Blob";
+import Array "mo:base/Array";
 
 import Types "./types";
 import Utils "./utils";
@@ -302,6 +303,85 @@ module {
           #ok(updatedRequest)
         };
       }
+    };
+
+    // Get all boost requests for a specific provider
+    public func getBoostRequestsByProvider(provider: Principal) : [Types.BoostRequest] {
+      let requests = Buffer.Buffer<Types.BoostRequest>(0);
+      
+      for ((_, request) in state.boostRequests.entries()) {
+        switch (request.preferredProvider) {
+          case (?preferredProvider) {
+            if (preferredProvider == provider) {
+              requests.add(request);
+            };
+          };
+          case null {};
+        };
+      };
+      
+      Buffer.toArray(requests)
+    };
+
+    // Get boost requests by status
+    public func getBoostRequestsByStatus(status: Types.BoostStatus) : [Types.BoostRequest] {
+      let requests = Buffer.Buffer<Types.BoostRequest>(0);
+      
+      for ((_, request) in state.boostRequests.entries()) {
+        if (request.status == status) {
+          requests.add(request);
+        };
+      };
+      
+      Buffer.toArray(requests)
+    };
+
+    // Get pending boost requests for a specific provider
+    public func getPendingBoostRequestsForProvider(provider: Principal) : [Types.BoostRequest] {
+      let requests = Buffer.Buffer<Types.BoostRequest>(0);
+      
+      for ((_, request) in state.boostRequests.entries()) {
+        switch (request.preferredProvider) {
+          case (?preferredProvider) {
+            if (preferredProvider == provider and request.status == #pending) {
+              requests.add(request);
+            };
+          };
+          case null {};
+        };
+      };
+      
+      // Sort by creation time (oldest first)
+      let array = Buffer.toArray(requests);
+      Array.sort(array, func(a: Types.BoostRequest, b: Types.BoostRequest) : {#less; #equal; #greater} {
+        if (a.createdAt < b.createdAt) #less
+        else if (a.createdAt == b.createdAt) #equal
+        else #greater
+      })
+    };
+
+    // Get boost requests by provider and status
+    public func getBoostRequestsByProviderAndStatus(provider: Principal, status: Types.BoostStatus) : [Types.BoostRequest] {
+      let requests = Buffer.Buffer<Types.BoostRequest>(0);
+      
+      for ((_, request) in state.boostRequests.entries()) {
+        switch (request.preferredProvider) {
+          case (?preferredProvider) {
+            if (preferredProvider == provider and request.status == status) {
+              requests.add(request);
+            };
+          };
+          case null {};
+        };
+      };
+      
+      // Sort by creation time (oldest first)
+      let array = Buffer.toArray(requests);
+      Array.sort(array, func(a: Types.BoostRequest, b: Types.BoostRequest) : {#less; #equal; #greater} {
+        if (a.createdAt < b.createdAt) #less
+        else if (a.createdAt == b.createdAt) #equal
+        else #greater
+      })
     };
   };
 } 
