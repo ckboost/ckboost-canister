@@ -78,7 +78,20 @@ actor CKBoost {
     await boosterPoolManager.registerPool(args.fee);
   };
 
+  public shared(msg) func addLiquidity(args: Types.AddLiquidityArgs) : async Result.Result<Types.LiquidityProvider, Text> {
+    let canisterPrincipal = Principal.fromText(CANISTER_PRINCIPAL);
+    await boosterPoolManager.addLiquidity(canisterPrincipal, msg.caller, args);
+  };
+
   public query func getAllPools() : async [Types.BoosterPool] {
     boosterPoolManager.getAllPools()
+  };
+
+  public query func getAllLiquidityProviders() : async [Types.LiquidityProvider] {
+    boosterPoolManager.getAllLiquidityProviders()
+  };
+
+  public query func getLiquidityProvider(provider: Principal) : async ?Types.LiquidityProvider {
+    boosterPoolManager.getLiquidityProvider(provider)
   };
 }

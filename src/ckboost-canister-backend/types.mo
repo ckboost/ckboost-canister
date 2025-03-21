@@ -19,6 +19,14 @@ module {
   };
 
   // Domain Types
+  public type LiquidityProvider = {
+    poolId: BoosterPoolId;
+    provider: Principal;
+    amount: Amount;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+  };
+
   public type BoosterPool = {
     id: BoosterPoolId;
     owner: Principal;
@@ -52,6 +60,11 @@ module {
 
   public type RegisterPoolArgs = {
     fee: Fee;
+  };
+
+  public type AddLiquidityArgs = {
+    poolId: BoosterPoolId;
+    amount: Amount;
   };
 
   // Constants
