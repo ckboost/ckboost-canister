@@ -15,83 +15,83 @@ import StateModule "./state";
 import Minter "./minter";
 import BtcUtils "./btc_utils";
 import BoostRequestModule "./boost_request";
-import BoosterPoolModule "./booster_pool";
+import ProviderModule "./provider";
 
 actor CKBoost {
-  // Stable variables for persistence
+  // Stable variables for upgrade persistence
   private stable var nextBoostId: Types.BoostId = 1;
-  private stable var nextBoosterPoolId: Types.BoosterPoolId = 1;
   private stable var boostRequestEntries : [(Types.BoostId, Types.BoostRequest)] = [];
-  private stable var boosterPoolEntries : [(Types.BoosterPoolId, Types.BoosterPool)] = [];
-  
-  // Initialize state with stable variables
-  private let state = StateModule.State(nextBoostId, nextBoosterPoolId);
-  
-  // Initialize managers
+  private stable var transactionEntries : [(Nat, Types.Transaction)] = [];
+
+  // Initialize state
+  private let state = StateModule.State(nextBoostId);
   private let boostRequestManager = BoostRequestModule.BoostRequestManager(state);
-  private let boosterPoolManager = BoosterPoolModule.BoosterPoolManager(state);
-  
-  // Constants
-  private let CANISTER_PRINCIPAL: Text = "b5hua-hiaaa-aaaae-qcuvq-cai";
-  private let ckBTCMinter : Minter.CkBtcMinterInterface = actor(Minter.CKBTC_MINTER_CANISTER_ID);
-  private let FIXED_FEE: Types.Fee = 1.5;
-  
+  private let providerManager = ProviderModule.ProviderManager(state);
+
+  // Pre-upgrade
   system func preupgrade() {
     boostRequestEntries := Iter.toArray(state.boostRequests.entries());
-    boosterPoolEntries := Iter.toArray(state.boosterPools.entries());
+    transactionEntries := Iter.toArray(state.transactions.entries());
     nextBoostId := state.nextBoostId;
-    nextBoosterPoolId := state.nextBoosterPoolId;
   };
-  
+
+  // Post-upgrade
   system func postupgrade() {
     state.boostRequests := HashMap.fromIter<Types.BoostId, Types.BoostRequest>(
-      boostRequestEntries.vals(), 
-      boostRequestEntries.size(), 
-      Nat.equal, 
-      Utils.natHash
+      boostRequestEntries.vals(),
+      boostRequestEntries.size(),
+      Nat.equal,
+      Utils.natHash,
     );
+
+    state.transactions := HashMap.fromIter<Nat, Types.Transaction>(
+      transactionEntries.vals(),
+      transactionEntries.size(),
+      Nat.equal,
+      Utils.natHash,
+    );
+
     boostRequestEntries := [];
-    
-    state.boosterPools := HashMap.fromIter<Types.BoosterPoolId, Types.BoosterPool>(
-      boosterPoolEntries.vals(), 
-      boosterPoolEntries.size(), 
-      Nat.equal, 
-      Utils.natHash
-    );
-    boosterPoolEntries := [];
-    
+    transactionEntries := [];
     state.nextBoostId := nextBoostId;
-    state.nextBoosterPoolId := nextBoosterPoolId;
   };
 
-  public func registerBoostRequest(args: Types.RegisterBoostRequestArgs) : async Result.Result<Types.BoostRequest, Text> {
-    if (args.amount <= 0.0) {
-      return #err("Amount must be greater than 0");
-    };
-    await boostRequestManager.registerBoostRequest(args.user, args.amount, FIXED_FEE, args.preferredBPPrincipal);
+  // Provider Management
+  public shared(msg) func registerProvider() : async Result.Result<Types.LiquidityProvider, Text> {
+    providerManager.registerProvider(msg.caller)
   };
 
-  public shared(msg) func registerPool(args: Types.RegisterPoolArgs) : async Result.Result<Types.BoosterPool, Text> {
-    if (Principal.toText(msg.caller) != Types.POOL_ADMIN_PRINCIPAL) {
-      return #err("Unauthorized: only pool admin can register pools");
-    };
-    await boosterPoolManager.registerPool(args.fee);
+  public shared(msg) func addLiquidity(args: Types.AddLiquidityArgs) : async Result.Result<Types.Transaction, Text> {
+    await providerManager.addLiquidity(msg.caller, args)
   };
 
-  public shared(msg) func addLiquidity(args: Types.AddLiquidityArgs) : async Result.Result<Types.LiquidityProvider, Text> {
-    let canisterPrincipal = Principal.fromText(CANISTER_PRINCIPAL);
-    await boosterPoolManager.addLiquidity(canisterPrincipal, msg.caller, args);
+  public shared(msg) func withdrawLiquidity(args: Types.WithdrawLiquidityArgs) : async Result.Result<Types.Transaction, Text> {
+    await providerManager.withdrawLiquidity(msg.caller, args)
   };
 
-  public query func getAllPools() : async [Types.BoosterPool] {
-    boosterPoolManager.getAllPools()
+  // Boost Request Management
+  public shared(msg) func registerBoostRequest(args: Types.RegisterBoostRequestArgs) : async Result.Result<Types.BoostRequest, Text> {
+    await boostRequestManager.registerBoostRequest(msg.caller, args)
   };
 
-  public query func getAllLiquidityProviders() : async [Types.LiquidityProvider] {
-    boosterPoolManager.getAllLiquidityProviders()
+  // Query Functions
+  public query func getProvider(provider: Principal) : async ?Types.LiquidityProvider {
+    providerManager.getProvider(provider)
   };
 
-  public query func getLiquidityProvider(provider: Principal) : async ?Types.LiquidityProvider {
-    boosterPoolManager.getLiquidityProvider(provider)
+  public query func getAllProviders() : async [Types.LiquidityProvider] {
+    providerManager.getAllProviders()
+  };
+
+  public query func getBoostRequest(id: Types.BoostId) : async ?Types.BoostRequest {
+    state.boostRequests.get(id)
+  };
+
+  public query func getTransaction(id: Nat) : async ?Types.Transaction {
+    state.getTransaction(id)
+  };
+
+  public query func getTransactionsByProvider(provider: Principal) : async [Types.Transaction] {
+    state.getTransactionsByProvider(provider)
   };
 }

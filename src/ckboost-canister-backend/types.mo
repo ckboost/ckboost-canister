@@ -44,12 +44,12 @@ module {
     transactionType: TransactionType;
     amount: Amount;
     fee: ?Fee;
+    boostRequestId: ?BoostId;
     status: {
       #pending;
       #completed;
       #failed;
     };
-    boostRequestId: ?BoostId;
     memo: ?Text;
     createdAt: Timestamp;
     completedAt: ?Timestamp;
@@ -96,9 +96,4 @@ module {
     available: Amount;
     locked: Amount;
   };
-
-  // Constants
-  public let MIN_DEPOSIT_AMOUNT: Float = 0.0005; // Minimum deposit in ckBTC
-  public let DEFAULT_FEE_PERCENTAGE: Float = 0.1; // 0.1%
-  public let MAX_FEE_PERCENTAGE: Float = 2.0; // 0%
 } 

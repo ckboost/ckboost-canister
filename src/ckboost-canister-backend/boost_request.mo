@@ -9,27 +9,26 @@ import Nat "mo:base/Nat";
 import Float "mo:base/Float";
 import Buffer "mo:base/Buffer";
 import Iter "mo:base/Iter";
+import Blob "mo:base/Blob";
 
 import Types "./types";
 import Utils "./utils";
 import StateModule "./state";
 import Minter "./minter";
 import BtcUtils "./btc_utils";
+import Constants "./constants";
 
 module {
-  // Define a class that takes a state object
   public class BoostRequestManager(state: StateModule.State) {
-    // Constants
-    let CANISTER_PRINCIPAL: Text = "b5hua-hiaaa-aaaae-qcuvq-cai";
-    let ckBTCMinter : Minter.CkBtcMinterInterface = actor(Minter.CKBTC_MINTER_CANISTER_ID);
+    let ckBTCMinter : Minter.CkBtcMinterInterface = actor(Constants.CKBTC_MINTER_CANISTER_ID);
 
     public func getBTCAddress(subaccount: Types.Subaccount) : async Text {
       try {
-        let canisterPrincipal = Principal.fromText(CANISTER_PRINCIPAL);
+        let canisterPrincipal = Principal.fromText(Constants.CANISTER_PRINCIPAL);
         
         let args = {
           owner = ?canisterPrincipal;
-          subaccount = ?subaccount;
+          subaccount = ?Blob.fromArray(subaccount);
         };
         let btcAddress = await ckBTCMinter.get_btc_address(args);
         return btcAddress;
@@ -46,11 +45,11 @@ module {
         };
         case (?request) {
           try {
-            let canisterPrincipal = Principal.fromText(BtcUtils.CANISTER_PRINCIPAL);
+            let canisterPrincipal = Principal.fromText(Constants.CANISTER_PRINCIPAL);
             
             let args = {
               owner = ?canisterPrincipal;
-              subaccount = ?request.subaccount;
+              subaccount = ?Blob.fromArray(request.subaccount);
             };
             
             let updateResult = await BtcUtils.ckBTCMinter.update_balance(args);
@@ -60,7 +59,7 @@ module {
                 Debug.print("Found deposits: " # Nat64.toText(result.amount) # " satoshis");
                 // Convert satoshis to BTC (1 BTC = 100,000,000 satoshis)
                 let satoshisInt64 = Int64.fromNat64(result.amount);
-                let btcAmount : Float = Float.fromInt64(satoshisInt64) / 100000000.0;
+                let btcAmount : Float = Float.fromInt64(satoshisInt64) / Constants.SATOSHI_CONVERSION;
                 let updatedRequest = await updateReceivedBTC(boostId, btcAmount);
                 return updatedRequest;
               };
@@ -76,7 +75,7 @@ module {
                   case (#TemporarilyUnavailable(msg)) {
                     return #err("Service temporarily unavailable: " # msg);
                   };
-                  case (#GenericError({ error_message; error_code })) {
+                  case (#GenericError({ error_message; error_code = _ })) {
                     return #err("Error checking deposits: " # error_message);
                   };
                 };
@@ -91,56 +90,48 @@ module {
     };
 
     // Register a new boost request
-    public func registerBoostRequest(caller: Principal, amount: Types.Amount, fee: Types.Fee, preferredBPPrincipal: ?Principal) : async Result.Result<Types.BoostRequest, Text> {
-      if (amount <= 0.0) {
+    public func registerBoostRequest(
+      owner: Principal,
+      args: Types.RegisterBoostRequestArgs
+    ) : async Result.Result<Types.BoostRequest, Text> {
+      if (args.amount <= 0.0) {
         return #err("Amount must be greater than 0");
       };
-      
-      if (fee < 0.0 or fee > 2.0) {
-        return #err("Fee must be between 0% and 200%");
-      };
-      
+
       let boostId = state.getNextBoostId();
-      
       let now = Time.now();
-      let subaccount = Utils.generateSubaccount(caller, boostId);
+
+      // Generate a unique subaccount for this boost request
+      let subaccount = Utils.generateSubaccount(owner, boostId);
+
+      // Get BTC address for the subaccount
+      let btcAddressResult = await BtcUtils.getBTCAddress(subaccount);
       
-      let initialBoostRequest : Types.BoostRequest = {
-        id = boostId;
-        owner = caller;
-        amount = amount;
-        fee = fee;
-        receivedBTC = 0.0;
-        btcAddress = null;
-        subaccount = subaccount;
-        status = #pending;
-        matchedBoosterPool = null;
-        preferredBPPrincipal = preferredBPPrincipal;
-        createdAt = now;
-        updatedAt = now;
-      };
-      
-      state.boostRequests.put(boostId, initialBoostRequest);
-      
-      try {
-        Debug.print("Getting BTC address for boost request " # Nat.toText(boostId));
-        let btcAddressResult = await BtcUtils.getBTCAddress(subaccount);
-        
-        switch (btcAddressResult) {
-          case (#ok(btcAddress)) {
-            Debug.print("Got BTC address: " # btcAddress);
-            let updatedRequest = await updateBTCAddress(boostId, btcAddress);
-            return updatedRequest;
+      switch (btcAddressResult) {
+        case (#err(e)) return #err(e);
+        case (#ok(btcAddress)) {
+          let request : Types.BoostRequest = {
+            id = boostId;
+            owner = owner;
+            amount = args.amount;
+            maxFee = switch (args.maxFee) {
+              case (null) Constants.DEFAULT_FEE_PERCENTAGE;
+              case (?fee) fee;
+            };
+            receivedBTC = 0.0;
+            btcAddress = ?btcAddress;
+            subaccount = subaccount;
+            status = #pending;
+            matchedProvider = null;
+            preferredProvider = args.preferredProvider;
+            createdAt = now;
+            updatedAt = now;
           };
-          case (#err(error)) {
-            Debug.print("Error getting BTC address: " # error);
-            return #ok(initialBoostRequest);
-          };
+
+          state.boostRequests.put(boostId, request);
+          #ok(request)
         };
-      } catch (e) {
-        Debug.print("Error getting BTC address during registration: " # Error.message(e));
-        return #ok(initialBoostRequest);
-      };
+      }
     };
 
     // Update received BTC amount for a boost request
@@ -154,13 +145,13 @@ module {
             id = request.id;
             owner = request.owner;
             amount = request.amount;
-            fee = request.fee;
+            maxFee = request.maxFee;
             receivedBTC = receivedAmount;
             btcAddress = request.btcAddress;
             subaccount = request.subaccount;
             status = request.status;
-            matchedBoosterPool = request.matchedBoosterPool;
-            preferredBPPrincipal = request.preferredBPPrincipal;
+            matchedProvider = request.matchedProvider;
+            preferredProvider = request.preferredProvider;
             createdAt = request.createdAt;
             updatedAt = Time.now();
           };
@@ -183,13 +174,13 @@ module {
             id = request.id;
             owner = request.owner;
             amount = request.amount;
-            fee = request.fee;
+            maxFee = request.maxFee;
             receivedBTC = request.receivedBTC;
             btcAddress = ?btcAddress;
             subaccount = request.subaccount;
             status = request.status;
-            matchedBoosterPool = request.matchedBoosterPool;
-            preferredBPPrincipal = request.preferredBPPrincipal;
+            matchedProvider = request.matchedProvider;
+            preferredProvider = request.preferredProvider;
             createdAt = request.createdAt;
             updatedAt = Time.now();
           };
@@ -254,6 +245,39 @@ module {
         state.boostRequests.entries(), 
         func ((_, v)) { v }
       ))
+    };
+
+    public func updateBoostRequest(
+      id: Types.BoostId,
+      status: Types.BoostStatus,
+      receivedBTC: ?Types.Amount,
+      matchedProvider: ?Principal
+    ) : Result.Result<Types.BoostRequest, Text> {
+      switch (state.boostRequests.get(id)) {
+        case null #err("Boost request not found");
+        case (?request) {
+          let updatedRequest : Types.BoostRequest = {
+            id = request.id;
+            owner = request.owner;
+            amount = request.amount;
+            maxFee = request.maxFee;
+            receivedBTC = switch (receivedBTC) {
+              case (null) request.receivedBTC;
+              case (?amount) amount;
+            };
+            btcAddress = request.btcAddress;
+            subaccount = request.subaccount;
+            status = status;
+            matchedProvider = matchedProvider;
+            preferredProvider = request.preferredProvider;
+            createdAt = request.createdAt;
+            updatedAt = Time.now();
+          };
+
+          state.boostRequests.put(id, updatedRequest);
+          #ok(updatedRequest)
+        };
+      }
     };
   };
 } 
