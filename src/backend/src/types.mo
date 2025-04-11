@@ -35,6 +35,7 @@ module {
     subaccount: Subaccount;
     status: BoostStatus;
     booster: ?Principal;
+    preferredBooster: ?Principal;
     createdAt: Timestamp;
     updatedAt: Timestamp;
     maxFeePercentage: Float;

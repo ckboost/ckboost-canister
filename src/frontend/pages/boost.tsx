@@ -30,13 +30,14 @@ export function BoostPage() {
   const [btcAddress, setBtcAddress] = useState<string>("");
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const confirmationsRequired = 1;
 
   const agent = useAgent();
   const BACKEND_CANISTER_ID = "75egi-7qaaa-aaaao-qj6ma-cai";
 
   const handleRequestAddress = async () => {
     if (!btcAmount || parseFloat(btcAmount) < 0.0001) {
-      alert("Enter a valid BTC amount (minimum 0.0001 BTC)");
+      alert("Please enter a valid BTC amount (minimum 0.0001 BTC).");
       return;
     }
 
@@ -48,12 +49,17 @@ export function BoostPage() {
       });
 
       const amountInSatoshis = parseFloat(btcAmount) * 1e8;
+      const preferredBooster: Principal[] = [];
+
       const result = await backendActor.registerBoostRequest(
         BigInt(amountInSatoshis),
-        feePercentage
+        feePercentage,
+        feePercentage,
+        BigInt(confirmationsRequired),
+        preferredBooster
       );
 
-      if (result && typeof result === 'object' && 'ok' in result) {
+      if (result && typeof result === 'object' && 'ok' in result) {2
         const okResult = result as { ok: { btcAddress: string[] } };
         setBtcAddress(okResult.ok.btcAddress[0] || "");
         setShowAddress(true);
@@ -389,7 +395,7 @@ export function BoostPage() {
                         
                         {/* Footer */}
                         <div className="bg-gradient-to-r from-blue-900/10 to-indigo-900/10 p-4 border-t border-gray-700/50">
-                          <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-2">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                               <p className="text-sm text-gray-300">

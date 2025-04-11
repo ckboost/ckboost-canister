@@ -92,7 +92,7 @@ module {
     };
 
     // Register a new boost request
-    public func registerBoostRequest(caller: Principal, amount: Types.Amount, fee: Types.Fee, maxFeePercentage: Float, confirmationsRequired: Nat) : async Result.Result<Types.BoostRequest, Text> {
+    public func registerBoostRequest(caller: Principal, amount: Types.Amount, fee: Types.Fee, maxFeePercentage: Float, confirmationsRequired: Nat, preferredBooster: ?Principal) : async Result.Result<Types.BoostRequest, Text> {
       if (amount == 0) {
         return #err("Amount must be greater than 0");
       };
@@ -120,6 +120,7 @@ module {
         subaccount = subaccount;
         status = #pending;
         booster = null;
+        preferredBooster = preferredBooster;
         createdAt = now;
         updatedAt = now;
         maxFeePercentage = maxFeePercentage;
@@ -166,6 +167,7 @@ module {
             subaccount = request.subaccount;
             status = request.status;
             booster = request.booster;
+            preferredBooster = request.preferredBooster;
             createdAt = request.createdAt;
             updatedAt = Time.now();
             maxFeePercentage = request.maxFeePercentage;
@@ -198,6 +200,7 @@ module {
             subaccount = request.subaccount;
             status = request.status;
             booster = request.booster;
+            preferredBooster = request.preferredBooster;
             createdAt = request.createdAt;
             updatedAt = Time.now();
             maxFeePercentage = request.maxFeePercentage;

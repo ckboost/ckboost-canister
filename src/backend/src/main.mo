@@ -56,8 +56,8 @@ actor CKBoost {
   };
 
   // Boost Request Functions
-  public shared(msg) func registerBoostRequest(amount: Types.Amount, fee: Types.Fee, maxFeePercentage: Float, confirmationsRequired: Nat) : async Result.Result<Types.BoostRequest, Text> {
-    await boostRequestManager.registerBoostRequest(msg.caller, amount, fee, maxFeePercentage, confirmationsRequired);
+  public shared(msg) func registerBoostRequest(amount: Types.Amount, fee: Types.Fee, maxFeePercentage: Float, confirmationsRequired: Nat, preferredBooster: ?Principal) : async Result.Result<Types.BoostRequest, Text> {
+    await boostRequestManager.registerBoostRequest(msg.caller, amount, fee, maxFeePercentage, confirmationsRequired, preferredBooster);
   };
   
   public func checkBTCDeposit(boostId: Types.BoostId) : async Result.Result<Types.BoostRequest, Text> {
@@ -208,6 +208,7 @@ actor CKBoost {
               subaccount = request.subaccount;
               status = #completed;
               booster = ?booster;
+              preferredBooster = request.preferredBooster;
               createdAt = request.createdAt;
               updatedAt = Time.now();
               maxFeePercentage = request.maxFeePercentage;
