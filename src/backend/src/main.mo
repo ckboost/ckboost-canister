@@ -1,7 +1,10 @@
 import Principal "mo:base/Principal";
+import Debug "mo:base/Debug";
+import Error "mo:base/Error";
 import Result "mo:base/Result";
 import Time "mo:base/Time";
 import Iter "mo:base/Iter";
+import Nat64 "mo:base/Nat64";
 import Nat "mo:base/Nat";
 import HashMap "mo:base/HashMap";
 
@@ -219,6 +222,128 @@ actor CKBoost {
             
             return #ok(updatedRequest);
           };
+        };
+      };
+    };
+  };
+
+  // Withdraw from booster account
+  public shared(msg) func withdrawBoosterFunds(amount: Types.Amount) : async Result.Result<Types.BoosterAccount, Text> {
+    let booster = msg.caller;
+    
+    // Check if booster has an account
+    switch (state.boosterAccounts.get(booster)) {
+      case (null) {
+        return #err("Booster account not found");
+      };
+      case (?boosterAccount) {
+        // Standard fee for ckBTC transfers
+        let standardFee : Nat = 10;
+        
+        // Check if booster has enough available balance (accounting for fee)
+        if (boosterAccount.availableBalance < amount + standardFee) {
+          return #err("Insufficient available balance for withdrawal (including fee)");
+        };
+        
+        // Calculate the actual amount to withdraw (deducting fee)
+        let amountToWithdraw = amount;
+        
+        // Actually transfer the ckBTC using the ledger canister
+        try {
+          // Interface for ICRC-1 token ledger
+          type Account = {
+            owner : Principal;
+            subaccount : ?Blob;
+          };
+          
+          type TransferArgs = {
+            from_subaccount : ?Blob;
+            to : Account;
+            amount : Nat;
+            fee : ?Nat;
+            memo : ?Blob;
+            created_at_time : ?Nat64;
+          };
+          
+          type TransferResult = {
+            #Ok : Nat;
+            #Err : {
+              #BadFee : { expected_fee : Nat };
+              #BadBurn : { min_burn_amount : Nat };
+              #InsufficientFunds : { balance : Nat };
+              #TooOld;
+              #CreatedInFuture : { ledger_time : Nat64 };
+              #Duplicate : { duplicate_of : Nat };
+              #TemporarilyUnavailable;
+              #GenericError : { error_code : Nat; message : Text };
+            };
+          };
+          
+          // Interface for the ICRC-1 ledger canister
+          type ICRCLedgerInterface = actor {
+            icrc1_transfer : shared (TransferArgs) -> async TransferResult;
+          };
+          
+          // ICRC-1 ledger canister ID
+          let CKBTC_LEDGER_CANISTER_ID = "mc6ru-gyaaa-aaaar-qaaaq-cai";
+          let ckbtcLedger = actor(CKBTC_LEDGER_CANISTER_ID) : ICRCLedgerInterface;
+          
+          // Prepare the transfer arguments
+          let transferArgs : TransferArgs = {
+            from_subaccount = ?boosterAccount.subaccount;
+            to = {
+              owner = booster;
+              subaccount = null;
+            };
+            amount = amountToWithdraw;
+            fee = ?standardFee; // Standard fee of 10 e8s for ckBTC
+            memo = null;
+            created_at_time = null;
+          };
+          
+          Debug.print("Starting withdrawal transfer for " # Principal.toText(booster) # " amount: " # Nat.toText(amountToWithdraw) # " (fee: " # Nat.toText(standardFee) # ")");
+          
+          // Execute the transfer
+          let transferResult = await ckbtcLedger.icrc1_transfer(transferArgs);
+          
+          switch (transferResult) {
+            case (#Ok(blockIndex)) {
+              Debug.print("Transfer successful, block index: " # Nat.toText(blockIndex));
+              
+              // Update booster account - subtract amount + fee from available balance
+              let updatedAccount : Types.BoosterAccount = {
+                owner = boosterAccount.owner;
+                subaccount = boosterAccount.subaccount;
+                totalDeposited = boosterAccount.totalDeposited;
+                availableBalance = boosterAccount.availableBalance - (amountToWithdraw + standardFee);
+                createdAt = boosterAccount.createdAt;
+                updatedAt = Time.now();
+              };
+              
+              state.boosterAccounts.put(booster, updatedAccount);
+              
+              return #ok(updatedAccount);
+            };
+            case (#Err(err)) {
+              let errorMsg = switch (err) {
+                case (#BadFee(details)) { "Bad fee: expected " # Nat.toText(details.expected_fee) };
+                case (#BadBurn(details)) { "Bad burn: minimum " # Nat.toText(details.min_burn_amount) };
+                case (#InsufficientFunds(details)) { "Insufficient funds: balance " # Nat.toText(details.balance) };
+                case (#TooOld) { "Transaction too old" };
+                case (#CreatedInFuture(details)) { "Transaction created in future: ledger time " # Nat64.toText(details.ledger_time) };
+                case (#Duplicate(details)) { "Duplicate transaction: duplicate of " # Nat.toText(details.duplicate_of) };
+                case (#TemporarilyUnavailable) { "Service temporarily unavailable" };
+                case (#GenericError(details)) { "Error: " # details.message # " (code: " # Nat.toText(details.error_code) # ")" };
+              };
+              
+              Debug.print("Transfer error: " # errorMsg);
+              return #err("Transfer failed: " # errorMsg);
+            };
+          };
+        } catch (error) {
+          let errorMsg = Error.message(error);
+          Debug.print("Error during withdrawal: " # errorMsg);
+          return #err("Error transferring funds: " # errorMsg);
         };
       };
     };
