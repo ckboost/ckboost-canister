@@ -1,11 +1,7 @@
 import Principal "mo:base/Principal";
-import Debug "mo:base/Debug";
-import Error "mo:base/Error";
 import Result "mo:base/Result";
 import Time "mo:base/Time";
-import Buffer "mo:base/Buffer";
 import Iter "mo:base/Iter";
-import Nat64 "mo:base/Nat64";
 import Nat "mo:base/Nat";
 import HashMap "mo:base/HashMap";
 
@@ -15,21 +11,18 @@ import StateModule "./state";
 import Minter "./minter";
 import BtcUtils "./btc_utils";
 import BoostRequestModule "./boost_request";
-import BoosterPoolModule "./booster_pool";
 
 actor CKBoost {
   // Stable variables for persistence
   private stable var nextBoostId: Types.BoostId = 1;
-  private stable var nextBoosterPoolId: Types.BoosterPoolId = 1;
   private stable var boostRequestEntries : [(Types.BoostId, Types.BoostRequest)] = [];
-  private stable var boosterPoolEntries : [(Types.BoosterPoolId, Types.BoosterPool)] = [];
+  private stable var boosterAccountEntries : [(Principal, Types.BoosterAccount)] = [];
   
   // Initialize state with stable variables
-  private let state = StateModule.State(nextBoostId, nextBoosterPoolId);
+  private let state = StateModule.State(nextBoostId);
   
   // Initialize managers
   private let boostRequestManager = BoostRequestModule.BoostRequestManager(state);
-  private let boosterPoolManager = BoosterPoolModule.BoosterPoolManager(state);
   
   // Constants
   private let CANISTER_PRINCIPAL: Text = "75egi-7qaaa-aaaao-qj6ma-cai";
@@ -38,9 +31,8 @@ actor CKBoost {
   // System functions for stable storage
   system func preupgrade() {
     boostRequestEntries := Iter.toArray(state.boostRequests.entries());
-    boosterPoolEntries := Iter.toArray(state.boosterPools.entries());
+    boosterAccountEntries := Iter.toArray(state.boosterAccounts.entries());
     nextBoostId := state.nextBoostId;
-    nextBoosterPoolId := state.nextBoosterPoolId;
   };
   
   system func postupgrade() {
@@ -52,21 +44,20 @@ actor CKBoost {
     );
     boostRequestEntries := [];
     
-    state.boosterPools := HashMap.fromIter<Types.BoosterPoolId, Types.BoosterPool>(
-      boosterPoolEntries.vals(), 
-      boosterPoolEntries.size(), 
-      Nat.equal, 
-      Utils.natHash
+    state.boosterAccounts := HashMap.fromIter<Principal, Types.BoosterAccount>(
+      boosterAccountEntries.vals(), 
+      boosterAccountEntries.size(), 
+      Principal.equal, 
+      Principal.hash
     );
-    boosterPoolEntries := [];
+    boosterAccountEntries := [];
     
     state.nextBoostId := nextBoostId;
-    state.nextBoosterPoolId := nextBoosterPoolId;
   };
 
   // Boost Request Functions
-  public shared(msg) func registerBoostRequest(amount: Types.Amount, fee: Types.Fee) : async Result.Result<Types.BoostRequest, Text> {
-    await boostRequestManager.registerBoostRequest(msg.caller, amount, fee);
+  public shared(msg) func registerBoostRequest(amount: Types.Amount, fee: Types.Fee, maxFeePercentage: Float, confirmationsRequired: Nat) : async Result.Result<Types.BoostRequest, Text> {
+    await boostRequestManager.registerBoostRequest(msg.caller, amount, fee, maxFeePercentage, confirmationsRequired);
   };
   
   public func checkBTCDeposit(boostId: Types.BoostId) : async Result.Result<Types.BoostRequest, Text> {
@@ -93,29 +84,143 @@ actor CKBoost {
     boostRequestManager.getAllBoostRequests();
   };
 
-  // Booster Pool Functions
-  public shared(msg) func registerBoosterPool(fee: Types.Fee) : async Result.Result<Types.BoosterPool, Text> {
-    await boosterPoolManager.registerBoosterPool(msg.caller, fee);
+  // Booster Account Functions
+  public shared(msg) func registerBoosterAccount() : async Result.Result<Types.BoosterAccount, Text> {
+    let booster = msg.caller;
+    
+    // Check if booster already has an account
+    switch (state.boosterAccounts.get(booster)) {
+      case (?_) {
+        return #err("Booster account already exists");
+      };
+      case (null) {
+        let now = Time.now();
+        let subaccount = Utils.generateBoosterSubaccount(booster);
+        
+        let boosterAccount : Types.BoosterAccount = {
+          owner = booster;
+          subaccount = subaccount;
+          totalDeposited = 0;
+          availableBalance = 0;
+          createdAt = now;
+          updatedAt = now;
+        };
+        
+        state.boosterAccounts.put(booster, boosterAccount);
+        return #ok(boosterAccount);
+      };
+    };
   };
   
-  public func updateAvailableAmount(poolId: Types.BoosterPoolId, amount: Types.Amount) : async Result.Result<Types.BoosterPool, Text> {
-    boosterPoolManager.updateAvailableAmount(poolId, amount);
+  // Update booster account deposit amount
+  public func updateBoosterDeposit(booster: Principal, amount: Types.Amount) : async Result.Result<Types.BoosterAccount, Text> {
+    switch (state.boosterAccounts.get(booster)) {
+      case (null) {
+        return #err("Booster account not found");
+      };
+      case (?account) {
+        let updatedAccount : Types.BoosterAccount = {
+          owner = account.owner;
+          subaccount = account.subaccount;
+          totalDeposited = account.totalDeposited + amount;
+          availableBalance = account.availableBalance + amount;
+          createdAt = account.createdAt;
+          updatedAt = Time.now();
+        };
+        
+        state.boosterAccounts.put(booster, updatedAccount);
+        return #ok(updatedAccount);
+      };
+    };
   };
   
-  public func updateTotalBoosted(poolId: Types.BoosterPoolId, amount: Types.Amount) : async Result.Result<Types.BoosterPool, Text> {
-    boosterPoolManager.updateTotalBoosted(poolId, amount);
+  // Get booster account information
+  public query func getBoosterAccount(booster: Principal) : async ?Types.BoosterAccount {
+    state.boosterAccounts.get(booster);
   };
   
-  public query func getBoosterPool(id: Types.BoosterPoolId) : async ?Types.BoosterPool {
-    boosterPoolManager.getBoosterPool(id);
+  // Get all booster accounts
+  public query func getAllBoosterAccounts() : async [Types.BoosterAccount] {
+    Iter.toArray(Iter.map<(Principal, Types.BoosterAccount), Types.BoosterAccount>(
+      state.boosterAccounts.entries(), 
+      func ((_, v)) { v }
+    ));
   };
   
-  public query func getUserBoosterPools(user: Principal) : async [Types.BoosterPool] {
-    boosterPoolManager.getUserBoosterPools(user);
-  };
-  
-  public query func getAllBoosterPools() : async [Types.BoosterPool] {
-    boosterPoolManager.getAllBoosterPools();
+  // Execute a boost
+  public shared(msg) func executeBoost(boostId: Types.BoostId) : async Result.Result<Types.BoostRequest, Text> {
+    let booster = msg.caller;
+    
+    // Check if booster has an account
+    switch (state.boosterAccounts.get(booster)) {
+      case (null) {
+        return #err("Booster account not found");
+      };
+      case (?boosterAccount) {
+        // Check if boost request exists
+        switch (state.boostRequests.get(boostId)) {
+          case (null) {
+            return #err("Boost request not found");
+          };
+          case (?request) {
+            // Check if request is pending and has received BTC
+            if (request.status != #pending) {
+              return #err("Boost request is not in pending status");
+            };
+            
+            if (request.receivedBTC == 0) {
+              return #err("No BTC received for this boost request");
+            };
+            
+            // Check if the fee is acceptable
+            if (request.fee > request.maxFeePercentage) {
+              return #err("Fee exceeds maximum allowed by the request");
+            };
+            
+            // Check if booster has enough balance
+            if (boosterAccount.availableBalance < request.amount) {
+              return #err("Insufficient balance to execute this boost");
+            };
+            
+            // TODO: Implement the actual ckBTC transfer logic here
+            // For now, we just update the statuses
+            
+            // Update booster account
+            let updatedBoosterAccount : Types.BoosterAccount = {
+              owner = boosterAccount.owner;
+              subaccount = boosterAccount.subaccount;
+              totalDeposited = boosterAccount.totalDeposited;
+              availableBalance = boosterAccount.availableBalance - request.amount;
+              createdAt = boosterAccount.createdAt;
+              updatedAt = Time.now();
+            };
+            
+            state.boosterAccounts.put(booster, updatedBoosterAccount);
+            
+            // Update boost request
+            let updatedRequest : Types.BoostRequest = {
+              id = request.id;
+              owner = request.owner;
+              amount = request.amount;
+              fee = request.fee;
+              receivedBTC = request.receivedBTC;
+              btcAddress = request.btcAddress;
+              subaccount = request.subaccount;
+              status = #completed;
+              booster = ?booster;
+              createdAt = request.createdAt;
+              updatedAt = Time.now();
+              maxFeePercentage = request.maxFeePercentage;
+              confirmationsRequired = request.confirmationsRequired;
+            };
+            
+            state.boostRequests.put(boostId, updatedRequest);
+            
+            return #ok(updatedRequest);
+          };
+        };
+      };
+    };
   };
 
   // Utility Functions

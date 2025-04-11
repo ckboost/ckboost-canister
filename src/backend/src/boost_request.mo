@@ -92,13 +92,17 @@ module {
     };
 
     // Register a new boost request
-    public func registerBoostRequest(caller: Principal, amount: Types.Amount, fee: Types.Fee) : async Result.Result<Types.BoostRequest, Text> {
+    public func registerBoostRequest(caller: Principal, amount: Types.Amount, fee: Types.Fee, maxFeePercentage: Float, confirmationsRequired: Nat) : async Result.Result<Types.BoostRequest, Text> {
       if (amount == 0) {
         return #err("Amount must be greater than 0");
       };
       
       if (fee < 0.0 or fee > 1.0) {
         return #err("Fee must be between 0% and 100%");
+      };
+      
+      if (maxFeePercentage < 0.0 or maxFeePercentage > 2.0) {
+        return #err("Maximum fee percentage must be between 0% and 2%");
       };
       
       let boostId = state.getNextBoostId();
@@ -115,9 +119,11 @@ module {
         btcAddress = null;
         subaccount = subaccount;
         status = #pending;
-        matchedBoosterPool = null;
+        booster = null;
         createdAt = now;
         updatedAt = now;
+        maxFeePercentage = maxFeePercentage;
+        confirmationsRequired = confirmationsRequired;
       };
       
       state.boostRequests.put(boostId, initialBoostRequest);
@@ -159,9 +165,11 @@ module {
             btcAddress = request.btcAddress;
             subaccount = request.subaccount;
             status = request.status;
-            matchedBoosterPool = request.matchedBoosterPool;
+            booster = request.booster;
             createdAt = request.createdAt;
             updatedAt = Time.now();
+            maxFeePercentage = request.maxFeePercentage;
+            confirmationsRequired = request.confirmationsRequired;
           };
           
           state.boostRequests.put(boostId, updatedRequest);
@@ -189,9 +197,11 @@ module {
             btcAddress = ?btcAddress;
             subaccount = request.subaccount;
             status = request.status;
-            matchedBoosterPool = request.matchedBoosterPool;
+            booster = request.booster;
             createdAt = request.createdAt;
             updatedAt = Time.now();
+            maxFeePercentage = request.maxFeePercentage;
+            confirmationsRequired = request.confirmationsRequired;
           };
           
           state.boostRequests.put(boostId, updatedRequest);

@@ -4,7 +4,6 @@ import Blob "mo:base/Blob";
 
 module {
   public type BoostId = Nat;
-  public type BoosterPoolId = Nat;
   public type Subaccount = Blob;
   public type Amount = Nat;
   public type Timestamp = Int;
@@ -17,13 +16,11 @@ module {
     #cancelled;
   };
 
-  public type BoosterPool = {
-    id: BoosterPoolId;
+  public type BoosterAccount = {
     owner: Principal;
-    fee: Fee;
     subaccount: Subaccount;
-    availableAmount: Amount;
-    totalBoosted: Amount;
+    totalDeposited: Amount;
+    availableBalance: Amount;
     createdAt: Timestamp;
     updatedAt: Timestamp;
   };
@@ -37,8 +34,10 @@ module {
     btcAddress: ?Text;
     subaccount: Subaccount;
     status: BoostStatus;
-    matchedBoosterPool: ?BoosterPoolId;
+    booster: ?Principal;
     createdAt: Timestamp;
     updatedAt: Timestamp;
+    maxFeePercentage: Float;
+    confirmationsRequired: Nat;
   };
 } 

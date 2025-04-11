@@ -41,11 +41,11 @@ module {
     return Blob.fromArray(Buffer.toArray(buf));
   };
 
-  // Subaccount generation for booster pools
-  public func generateBoosterPoolSubaccount(owner: Principal, poolId: Nat) : Blob {
+  // Subaccount generation for booster accounts
+  public func generateBoosterSubaccount(owner: Principal) : Blob {
     let buf = Buffer.Buffer<Nat8>(32);
     
-    buf.add(0x02);
+    buf.add(0x02); // Prefix for booster accounts
     
     let principalBytes = Blob.toArray(Principal.toBlob(owner));
     let principalBytesToUse = Array.subArray(principalBytes, 0, Nat.min(principalBytes.size(), 16));
@@ -53,13 +53,9 @@ module {
       buf.add(byte);
     };
     
-    while (buf.size() < 24) {
+    // Fill the rest with zeros
+    while (buf.size() < 32) {
       buf.add(0);
-    };
-    
-    var id = poolId;
-    for (i in Iter.range(0, 7)) {
-      buf.add(Nat8.fromNat(Nat64.toNat(Nat64.fromNat(id) / Nat64.fromNat(256 ** (7 - i)) % 256)));
     };
     
     return Blob.fromArray(Buffer.toArray(buf));
