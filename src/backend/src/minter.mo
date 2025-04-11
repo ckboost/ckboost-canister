@@ -79,5 +79,5 @@ module {
     retrieve_btc_status : shared query (block_index : Nat64) -> async RetrieveBtcStatus;
   };
 
-  public let CKBTC_MINTER_CANISTER_ID : Text = "mqygn-kiaaa-aaaar-qaadq-cai"; // Mainnet ckBTC Minter
+  public let CKBTC_MINTER_CANISTER_ID : Text = "ml52i-qqaaa-aaaar-qaaba-cai"; // testnet ckBTC Minter
 } 
