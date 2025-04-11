@@ -98,7 +98,7 @@ export function WalletPage() {
             agent: new HttpAgent({
               host: "https://icp0.io",
             }),
-            canisterId: Principal.fromText("mxzaz-hqaaa-aaaar-qaada-cai")
+            canisterId: Principal.fromText("mc6ru-gyaaa-aaaar-qaaaq-cai") // todo - move to consts 
           }
         );
         const balanceResponse: BigInt = await ckBTCLedgerActor.icrc1_balance_of({
@@ -322,7 +322,7 @@ export function WalletPage() {
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-white">Chain-Key Bitcoin</h3>
-                        <p className="text-sm text-gray-400">ckBTC</p>
+                        <p className="text-sm text-gray-400">ckTESTBTC</p>
                       </div>
                     </div>
                     <div className="text-right">
