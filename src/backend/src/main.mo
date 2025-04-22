@@ -7,58 +7,77 @@ import Iter "mo:base/Iter";
 import Nat64 "mo:base/Nat64";
 import Nat "mo:base/Nat";
 import HashMap "mo:base/HashMap";
+import Text "mo:base/Text";
+import Float "mo:base/Float";
+import Buffer "mo:base/Buffer";
+import Option "mo:base/Option";
+import Blob "mo:base/Blob";
 
 import Types "./types";
 import Utils "./utils";
 import StateModule "./state";
-import Minter "./minter";
 import BtcUtils "./btc_utils";
 import BoostRequestModule "./boost_request";
 
-actor CKBoost {
-  // Stable variables for persistence
-  private stable var nextBoostId: Types.BoostId = 1;
-  private stable var boostRequestEntries : [(Types.BoostId, Types.BoostRequest)] = [];
-  private stable var boosterAccountEntries : [(Principal, Types.BoosterAccount)] = [];
-  
-  // Initialize state with stable variables
-  private let state = StateModule.State(nextBoostId);
+let CKBTC_LEDGER_CANISTER_ID = Principal.fromText("mc6ru-gyaaa-aaaar-qaaaq-cai");
+
+module LedgerDefs {
+  public type Account = { owner : Principal; subaccount : ?Blob };
+  public type Tokens = Nat;
+  public type TransferError = {
+    #GenericError : { message : Text; error_code : Nat };
+    #TemporarilyUnavailable;
+    #BadBurn : { min_burn_amount : Tokens };
+    #Duplicate : { duplicate_of : Nat };
+    #BadFee : { expected_fee : Tokens };
+    #CreatedInFuture : { ledger_time : Nat64 };
+    #TooOld;
+    #InsufficientFunds : { balance : Tokens };
+  };
+  public type TransferArgs = {
+    to : Account;
+    fee : ?Tokens;
+    memo : ?Blob;
+    from_subaccount : ?Blob;
+    created_at_time : ?Nat64;
+    amount : Tokens;
+  };
+  public type TransferResult = Result.Result<Nat, TransferError>;
+
+  public type Ledger = actor {
+    icrc1_transfer : shared TransferArgs -> async TransferResult;
+  };
+
+  public func transferErrorToText(err : TransferError) : Text {
+    switch (err) {
+      case (#GenericError(r)) "Generic Error: " # r.message;
+      case (#TemporarilyUnavailable) "Temporarily Unavailable";
+      case (#BadBurn(r)) "Bad Burn: Minimum burn amount is " # Nat.toText(r.min_burn_amount);
+      case (#Duplicate(r)) "Duplicate transfer of transaction " # Nat.toText(r.duplicate_of);
+      case (#BadFee(r)) "Bad Fee: Expected fee is " # Nat.toText(r.expected_fee);
+      case (#CreatedInFuture(_)) "Created in Future";
+      case (#TooOld) "Too Old";
+      case (#InsufficientFunds(r)) "Insufficient Funds: Balance is " # Nat.toText(r.balance);
+    };
+  };
+};
+
+actor class Main(initBoostId: Nat) {
+  let state = StateModule.State(initBoostId);
   
   // Initialize managers
   private let boostRequestManager = BoostRequestModule.BoostRequestManager(state);
   
   // Constants
   private let CANISTER_PRINCIPAL: Text = "75egi-7qaaa-aaaao-qj6ma-cai";
-  private let ckBTCMinter : Minter.CkBtcMinterInterface = actor(Minter.CKBTC_MINTER_CANISTER_ID);
   
   // System functions for stable storage
   system func preupgrade() {
-    boostRequestEntries := Iter.toArray(state.boostRequests.entries());
-    boosterAccountEntries := Iter.toArray(state.boosterAccounts.entries());
-    nextBoostId := state.nextBoostId;
   };
   
   system func postupgrade() {
-    state.boostRequests := HashMap.fromIter<Types.BoostId, Types.BoostRequest>(
-      boostRequestEntries.vals(), 
-      boostRequestEntries.size(), 
-      Nat.equal, 
-      Utils.natHash
-    );
-    boostRequestEntries := [];
-    
-    state.boosterAccounts := HashMap.fromIter<Principal, Types.BoosterAccount>(
-      boosterAccountEntries.vals(), 
-      boosterAccountEntries.size(), 
-      Principal.equal, 
-      Principal.hash
-    );
-    boosterAccountEntries := [];
-    
-    state.nextBoostId := nextBoostId;
   };
 
-  // Boost Request Functions
   public shared(msg) func registerBoostRequest(amount: Types.Amount, fee: Types.Fee, maxFeePercentage: Float, confirmationsRequired: Nat, preferredBooster: ?Principal) : async Result.Result<Types.BoostRequest, Text> {
     await boostRequestManager.registerBoostRequest(msg.caller, amount, fee, maxFeePercentage, confirmationsRequired, preferredBooster);
   };
@@ -354,8 +373,53 @@ actor CKBoost {
     return CANISTER_PRINCIPAL;
   };
 
-  // Direct method to get a BTC address for testing
   public func getDirectBTCAddress() : async Text {
     await BtcUtils.getDirectBTCAddress();
+  };
+
+  public query func getPendingBoostRequests(): async [Types.BoostRequest] {
+    let buffer = Buffer.Buffer<Types.BoostRequest>(state.boostRequests.size());
+    for (request in state.boostRequests.vals()) {
+      if (request.booster == null) {
+          buffer.add(request);
+      };
+    };
+ 
+    return Buffer.toArray(buffer);
+  };
+
+  // Function for a booster to accept/execute a boost request
+  public shared(msg) func acceptBoostRequest(boostId: Types.BoostId): async Result.Result<Text, Text> {
+    let caller = msg.caller;
+    let now = Time.now();
+
+    // 1. Get Booster Account (Combined declaration and switch)
+    var currentBoosterAccount : Types.BoosterAccount = switch (state.boosterAccounts.get(caller)) {
+      case (?account) account;
+      case (null) return #err("Caller is not a registered booster."); // Return directly from switch
+    };
+
+    // 2. Get Boost Request (Combined declaration and switch)
+    var currentBoostRequest : Types.BoostRequest = switch (state.boostRequests.get(boostId)) {
+      case (?request) request;
+      case (null) return #err("Boost request not found."); // Return directly from switch
+    };
+
+    // 3. Validate Request Status
+    if (currentBoostRequest.booster != null) {
+      return #err("Boost request has already been accepted.");
+    };
+    
+    // 4. Check Booster Balance
+    let requiredAmount = currentBoostRequest.amount;
+    if (currentBoosterAccount.availableBalance < requiredAmount) {
+        return #err("Insufficient available balance in booster account.");
+    };
+    
+    // --- TODO: Implement ckBTC transfer and state updates --- 
+    
+    // Placeholder success return
+    return #ok("Boost request accepted (placeholder - no transfer/state update yet).");
+    
   };
 }

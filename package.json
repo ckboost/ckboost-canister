@@ -4,8 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "vite --config vite.config.ts",
+    "dev:management": "vite --config src/management/vite.config.ts",
+    "build": "tsc -b && vite build --config vite.config.ts",
+    "build:management": "tsc -b && vite build --config src/management/vite.config.ts && echo '\nListing build output:' && ls -l src/management/dist",
+    "build:all": "npm run build && npm run build:management",
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy": "dfx deploy",
@@ -13,6 +16,7 @@
     "deploy:ic": "dfx deploy --network ic",
     "generate:backend": "dfx generate backend",
     "generate:frontend": "dfx generate frontend",
+    "generate:management": "dfx generate management",
     "generate:all": "dfx generate"
   },
   "dependencies": {
