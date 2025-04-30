@@ -2,14 +2,13 @@ import React from 'react';
 import { ConnectWallet, ConnectWalletButtonProps } from "@nfid/identitykit/react";
 import { motion } from "framer-motion";
 import { Button } from "./ui/button";
-import { Wallet, Zap, Landmark, List } from "lucide-react";
+import { LayoutDashboard, List, Wallet } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth-context";
 
 export function Header() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
-  const isDashboard = location.pathname === "/";
 
   return (
     <motion.header 
@@ -19,7 +18,7 @@ export function Header() {
       transition={{ duration: 0.3 }}
     >
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2 group">
+        <Link to="/dashboard" className="flex items-center gap-2 group">
           <motion.div
             className="flex items-center justify-center rounded-full bg-gradient-blue-purple p-2 glow"
             whileHover={{ scale: 1.05, boxShadow: "0 0 25px rgba(59, 130, 246, 0.7)" }}
@@ -49,10 +48,12 @@ export function Header() {
         </Link>
         <nav className="hidden md:flex items-center space-x-6">
           {isAuthenticated ? (
-            // Navigation for authenticated users
             <>
-              <NavLink to="/" active={isDashboard}>
-                Dashboard
+              <NavLink to="/dashboard" active={location.pathname === "/dashboard"}>
+                <div className="flex items-center gap-1">
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </div>
               </NavLink>
               <NavLink to="/pending-boosts" active={location.pathname === "/pending-boosts"}>
                 <div className="flex items-center gap-1">
@@ -62,7 +63,6 @@ export function Header() {
               </NavLink>
             </>
           ) : (
-            // Navigation for non-authenticated users (homepage sections)
             null
           )}
         </nav>
@@ -94,39 +94,9 @@ interface NavLinkProps {
   to: string;
   children: React.ReactNode;
   active?: boolean;
-  isHashLink?: boolean;
 }
 
-function NavLink({ to, children, active, isHashLink = false }: NavLinkProps) {
-  // Use conditional rendering instead of dynamic component
-  if (isHashLink) {
-    return (
-      <motion.div
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <a
-          href={to}
-          className={`text-sm font-medium ${active ? 'text-blue-400' : 'text-gray-400'} hover:text-blue-400 transition-colors relative group`}
-          onClick={(e) => {
-            e.preventDefault();
-            const element = document.querySelector(to);
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth' });
-            }
-          }}
-        >
-          {children}
-          <motion.span 
-            className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"
-            initial={{ width: 0 }}
-            whileHover={{ width: "100%" }}
-          />
-        </a>
-      </motion.div>
-    );
-  }
-  
+function NavLink({ to, children, active }: NavLinkProps) {
   return (
     <motion.div
       whileHover={{ scale: 1.05 }}
@@ -138,9 +108,7 @@ function NavLink({ to, children, active, isHashLink = false }: NavLinkProps) {
       >
         {children}
         <motion.span 
-          className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"
-          initial={{ width: 0 }}
-          whileHover={{ width: "100%" }}
+          className="absolute -bottom-1 left-0 h-0.5 bg-blue-500 transition-all duration-300 ${active ? 'w-full' : 'w-0 group-hover:w-full'}"
         />
       </Link>
     </motion.div>

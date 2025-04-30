@@ -8,9 +8,9 @@ import Utils "./utils";
 
 module {
   // Define a class that can be instantiated in the main actor
-  public class State(initialBoostId: Types.BoostId) {
+  public class State() {
     // State variables
-    public var nextBoostId: Types.BoostId = initialBoostId;
+    public var nextBoostId: Types.BoostId = 1;
     
     public var boostRequests = HashMap.HashMap<Types.BoostId, Types.BoostRequest>(0, Nat.equal, Utils.natHash);
     public var boosterAccounts = HashMap.HashMap<Principal, Types.BoosterAccount>(0, Principal.equal, Principal.hash);

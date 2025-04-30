@@ -1,7 +1,8 @@
+import React from 'react';
 import { ConnectWallet, ConnectWalletButtonProps } from "@nfid/identitykit/react";
 import { motion } from "framer-motion";
 import { Button } from "./ui/button";
-import { Wallet, Zap, Landmark } from "lucide-react";
+import { Wallet, Zap, History } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth-context";
 
@@ -65,10 +66,10 @@ export function Header() {
                   <span>Boost</span>
                 </div>
               </NavLink>
-              <NavLink to="/boost-lp" active={location.pathname === "/boost-lp"}>
+              <NavLink to="/history" active={location.pathname === "/history"}>
                 <div className="flex items-center gap-1">
-                  <Landmark className="h-4 w-4" />
-                  <span>Boost LP</span>
+                  <History className="h-4 w-4" />
+                  <span>History</span>
                 </div>
               </NavLink>
             </>

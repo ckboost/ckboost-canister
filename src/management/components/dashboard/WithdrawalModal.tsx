@@ -6,6 +6,7 @@ import { X, Info, AlertTriangle } from "lucide-react";
 import { Principal } from "@dfinity/principal";
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { idlFactory } from "../../../backend/declarations/backend.did.js";
+import { useAuth } from "../../lib/auth-context";
 
 // --- Copied Definitions --- 
 const BACKEND_CANISTER_ID = "75egi-7qaaa-aaaao-qj6ma-cai";
@@ -15,7 +16,6 @@ interface WithdrawalModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: any;
-  agent: any;
   boosterAccount: any;
   onWithdrawalSuccess: () => void; // Callback after successful withdrawal
 }
@@ -24,7 +24,6 @@ export function WithdrawalModal({
   isOpen, 
   onClose, 
   user, 
-  agent, 
   boosterAccount, 
   onWithdrawalSuccess 
 }: WithdrawalModalProps) {
@@ -32,6 +31,7 @@ export function WithdrawalModal({
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { identity } = useAuth();
 
   // Calculate available balance safely
   const availableBalance = boosterAccount?.actualBalance !== undefined 
@@ -48,6 +48,10 @@ export function WithdrawalModal({
   }, [isOpen]);
 
   const handleWithdraw = async () => {
+    if (!identity) { 
+      setError("Identity not available. Please connect wallet.");
+      return;
+    }
     if (!boosterAccount || !withdrawAmount || parseFloat(withdrawAmount) <= 0) {
       setError("Please enter a valid amount");
       return;
@@ -80,7 +84,7 @@ export function WithdrawalModal({
       
       const backendActor = Actor.createActor(
         idlFactory,
-        { agent, canisterId: Principal.fromText(BACKEND_CANISTER_ID) }
+        { agent: identity, canisterId: Principal.fromText(BACKEND_CANISTER_ID) }
       );
       
       const result = await backendActor.withdrawBoosterFunds(amountSatoshis);
@@ -228,11 +232,11 @@ export function WithdrawalModal({
                   </div>
                 </div>
                 
-                {/* Action Button */}
+                {/* Action Button - Disable if identity isn't available */}
                 <Button 
                   className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-lg shadow-amber-600/20 py-5 text-base rounded-xl"
                   onClick={handleWithdraw}
-                  disabled={isWithdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > availableBalance}
+                  disabled={!identity || isWithdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > availableBalance}
                 >
                   {isWithdrawing ? (
                     <span className="flex items-center gap-2">

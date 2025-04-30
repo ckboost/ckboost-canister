@@ -2,9 +2,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { HomePage } from './pages/home';
 import { Dashboard } from './pages/dashboard';
 import { BoostPage } from './pages/boost';
-import { BoostLPPage } from './pages/boost-lp';
+// import { BoostLPPage } from './pages/boost-lp'; // Removed old LP page
 import { WalletPage } from './pages/wallet';
 import { SendPage } from './pages/send';
+import { HistoryPage } from './pages/history'; // Import History page
 import { useAuth } from './lib/auth-context';
 import { ScrollToTop } from './components/scroll-to-top';
 import { ScrollToTopButton } from './components/scroll-to-top-button';
@@ -37,11 +38,7 @@ function AppRoutes() {
           <BoostPage />
         </ProtectedRoute>
       } />
-      <Route path="/boost-lp" element={
-        <ProtectedRoute>
-          <BoostLPPage />
-        </ProtectedRoute>
-      } />
+      {/* Removed /boost-lp route */}
       <Route path="/wallet" element={
         <ProtectedRoute>
           <WalletPage />
@@ -52,6 +49,14 @@ function AppRoutes() {
           <SendPage />
         </ProtectedRoute>
       } />
+      {/* Add History route */}
+      <Route path="/history" element={
+        <ProtectedRoute>
+          <HistoryPage />
+        </ProtectedRoute>
+      } />
+      {/* Add a catch-all or redirect if desired */}
+      {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
     </Routes>
   );
 }

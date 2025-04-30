@@ -11,40 +11,39 @@ import { ScrollToTopButton } from './components/scroll-to-top-button';
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-950">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-4 text-gray-400">Loading Authentication...</p>
-        </div>
-      </div>
-    );
-  }
+  // While checking authentication status, show nothing
+  if (isLoading) return null;
   
-  if (!isAuthenticated) {
-    console.log("ProtectedRoute: Not authenticated, redirecting to /");
-    return <Navigate to="/" replace />;
-  }
+  // If not authenticated, redirect to homepage
+  if (!isAuthenticated) return <Navigate to="/" replace />;
   
-  console.log("ProtectedRoute: Authenticated, rendering children");
+  // If authenticated, render the children
   return <>{children}</>;
 }
 
 function AppRoutes() {
   return (
     <Routes>
+      {/* Landing page - Public */}
       <Route path="/" element={<LandingPage />} />
+
+      {/* LP Dashboard - Protected (Uses correct component) */}
       <Route path="/dashboard" element={
         <ProtectedRoute>
-          <LpDashboardPage />
+          <LpDashboardPage /> 
         </ProtectedRoute>
       } />
+
+      {/* Pending Boosts - Protected */}
       <Route path="/pending-boosts" element={
         <ProtectedRoute>
-          <PendingBoostsPage /> 
+          <PendingBoostsPage />
         </ProtectedRoute>
       } />
+
+      {/* Remove other unused routes from copied frontend */}
+      
+      {/* Redirect any other path to landing */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

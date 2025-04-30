@@ -14,6 +14,7 @@ import { Principal } from "@dfinity/principal";
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { idlFactory } from "../../../backend/declarations/backend.did.js"; // Adjusted path
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { useAuth } from "../../lib/auth-context"; // Corrected path
 
 // --- Copied Definitions --- 
 const CKBTC_LEDGER_CANISTER_ID = "mc6ru-gyaaa-aaaar-qaaaq-cai";
@@ -59,7 +60,6 @@ const PoolSkeleton = () => (
 
 interface LpAccountSummaryCardProps {
   user: any;
-  agent: any;
   initialIsLoading: boolean;
   onRefresh: () => void; // Function to trigger refresh in parent if needed
   onShowDepositModal: () => void;
@@ -71,7 +71,6 @@ interface LpAccountSummaryCardProps {
 
 export function LpAccountSummaryCard({
   user,
-  agent,
   initialIsLoading,
   onRefresh, 
   onShowDepositModal,
@@ -83,6 +82,7 @@ export function LpAccountSummaryCard({
   const [boosterAccount, setBoosterAccount] = useState<any>(null);
   const [isAccountLoading, setIsAccountLoading] = useState(initialIsLoading);
   const [isRegisteringAccount, setIsRegisteringAccount] = useState(false);
+  const { identity } = useAuth(); // Get identity from context
 
   // Update boosterAccount state and call callback
   const updateBoosterAccount = (account: any | null) => {
@@ -141,13 +141,20 @@ export function LpAccountSummaryCard({
 
   // Register account logic (moved from parent)
   const handleRegisterAccount = async () => {
+    // Check identity from context
+    if (!identity) { 
+      setError("Identity not available. Please connect wallet.");
+      return;
+    }
+    
     setIsRegisteringAccount(true);
     setError(null);
     setSuccessMessage(null);
     try {
+      // Use identity from context as agent config
       const backendActor = Actor.createActor(
         idlFactory,
-        { agent, canisterId: Principal.fromText(BACKEND_CANISTER_ID) }
+        { agent: identity, canisterId: Principal.fromText(BACKEND_CANISTER_ID) }
       );
       const result = await backendActor.registerBoosterAccount();
       
@@ -231,7 +238,7 @@ export function LpAccountSummaryCard({
                 <Button 
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-lg shadow-blue-600/20 py-5 text-base px-8 rounded-xl"
                   onClick={handleRegisterAccount}
-                  disabled={isRegisteringAccount}
+                  disabled={!identity || isRegisteringAccount}
                 >
                   {isRegisteringAccount ? (
                     <span className="flex items-center gap-2">

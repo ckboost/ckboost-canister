@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth as useNfidAuth } from '@nfid/identitykit/react';
+import { useNavigate } from 'react-router-dom';
+
 
 interface User {
   principal: string;
-  subAccount?: any; // Define more strictly if possible
+  subAccount?: any;
 }
 
 interface AuthContextType {
@@ -11,95 +13,136 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   refreshAuth: () => void;
+  identity: any | null;
 }
 
+// Create the context with a default value
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
   refreshAuth: () => {},
+  identity: null,
 });
+
+// Custom hook to use the auth context
+export const useAuth = () => useContext(AuthContext);
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const [authState, setAuthState] = useState<AuthContextType>({
+    user: null,
+    isAuthenticated: false,
+    isLoading: true,
+    refreshAuth: () => {},
+    identity: null,
+  });
+
+  // Use the NFID auth hook
   const nfidAuth = useNfidAuth();
-
-  const [userState, setUserState] = useState<User | null>(null);
-  const [isLoadingState, setIsLoadingState] = useState(true);
-  const [isAuthenticatedState, setIsAuthenticatedState] = useState(false);
-
-  const updateAuthState = useCallback(() => {
+  
+  const refreshAuth = () => {
+    console.log("Manually refreshing auth state");
+    if (!nfidAuth.user || nfidAuth.user.principal.toString() === "2vxsx-fae") {
+      console.log("No valid user during refresh, clearing principal in wallet service");
+    } else {
+      const principalStr = nfidAuth.user.principal.toString();
+      console.log("Refreshing principal in wallet service:", principalStr);
+    }
+    
+    updateAuthState();
+  };
+  
+  const updateAuthState = () => {
     const isLoading = nfidAuth.isConnecting;
-    let isAuthed = false;
-    let user : User | null = null;
-
-    if (!isLoading && nfidAuth.user) {
-      const principalStr = nfidAuth.user.principal.toText();
-      if (principalStr !== "2vxsx-fae") { 
-        isAuthed = true;
-        user = {
+    
+    console.log("Auth state update - isConnecting:", isLoading);
+    console.log("Auth state update - nfidAuth.user:", nfidAuth.user);
+    
+    if (!isLoading) {
+      if (nfidAuth.user) {
+        const principalStr = nfidAuth.user.principal.toString();
+        console.log("Auth principal string:", principalStr);
+        
+        if (principalStr === "2vxsx-fae") {
+          console.warn("Anonymous principal detected. User is not properly authenticated.");
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            refreshAuth,
+            identity: null,
+          });
+          return;
+        }
+        
+        const user: User = {
           principal: principalStr,
           subAccount: nfidAuth.user.subAccount,
         };
+
+        console.log('User authenticated:', user);
+        console.log("Principal set in wallet service:", user.principal);
+
+        setAuthState({
+          user,
+          isAuthenticated: true,
+          isLoading: false,
+          refreshAuth,
+          identity: (nfidAuth as any).identity,
+        });
       } else {
-        console.warn("Anonymous principal detected.");
+        console.log("No user found in nfidAuth");
+        setAuthState({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          refreshAuth,
+          identity: null,
+        });
       }
+    } else {
+      setAuthState(prev => ({
+        ...prev,
+        isLoading: true,
+        refreshAuth,
+      }));
     }
-
-    setIsLoadingState(isLoading);
-    setIsAuthenticatedState(isAuthed);
-    setUserState(user);
-
-  }, [nfidAuth.isConnecting, nfidAuth.user]); 
-
-  useEffect(() => {
-    updateAuthState();
-  }, [updateAuthState]);
-
-  const refreshAuth = useCallback(() => {
-    console.log("refreshAuth called");
-    updateAuthState(); 
-  }, [updateAuthState]);
-
-  const contextValue: AuthContextType = {
-    user: userState,
-    isAuthenticated: isAuthenticatedState,
-    isLoading: isLoadingState, 
-    refreshAuth,
   };
 
+  useEffect(() => {
+    console.log("Auth context effect triggered");
+    updateAuthState();
+  }, [nfidAuth.user, nfidAuth.isConnecting]);
+
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={authState}>
       {children}
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context as AuthContextType;
-};
 
 export function withAuth<P extends object>(
   Component: React.ComponentType<P>
 ): React.FC<P> {
   return (props: P) => {
     const { isAuthenticated, isLoading, user } = useAuth();
+    const navigate = useNavigate();
 
     React.useEffect(() => {
       console.log("withAuth effect - isAuthenticated:", isAuthenticated, "isLoading:", isLoading, "user:", user);
       if (!isLoading && !isAuthenticated) {
         console.log("withAuth - redirecting to homepage due to no authentication");
+        // Redirect to homepage if not authenticated
+        navigate('/');
       }
-    }, [isAuthenticated, isLoading, user]);
+    }, [isAuthenticated, isLoading, navigate, user]);
 
     if (isLoading) {
+      // Loading component
       return (
         <div className="flex items-center justify-center min-h-[300px]">
           <div className="text-center">
@@ -110,6 +153,7 @@ export function withAuth<P extends object>(
       );
     }
 
+    // Only render component if authenticated
     return isAuthenticated ? <Component {...props} /> : null;
   };
 } 

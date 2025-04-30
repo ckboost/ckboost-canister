@@ -17,7 +17,7 @@ import BtcUtils "./btc_utils";
 module {
   // Define a class that takes a state object
   public class BoostRequestManager(state: StateModule.State) {
-    // Constants
+
     let CANISTER_PRINCIPAL: Text = "75egi-7qaaa-aaaao-qj6ma-cai";
     let ckBTCMinter : Minter.CkBtcMinterInterface = actor(Minter.CKBTC_MINTER_CANISTER_ID);
 
