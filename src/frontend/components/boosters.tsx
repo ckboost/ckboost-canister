@@ -1,13 +1,21 @@
 import { motion } from "framer-motion";
-import { Users, Zap } from "lucide-react";
+import { Users, Zap, Clock } from "lucide-react";
 import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Actor, HttpAgent } from "@dfinity/agent";
+import { Principal } from "@dfinity/principal";
+import { idlFactory, _SERVICE } from "../../backend/declarations/backend.did.js";
 
-// Calculate global statistics from the data
-const boosterStats = {
-  totalBoosters: 24,
-  totalBoosts: 19903,
-  totalVolume: 859.19,
+const BACKEND_CANISTER_ID = "75egi-7qaaa-aaaao-qj6ma-cai";
+
+// Create actor with anonymous identity
+const createActor = () => {
+  const agent = new HttpAgent({ host: "https://icp0.io" });
+  return Actor.createActor<_SERVICE>(idlFactory, { 
+    agent, 
+    canisterId: Principal.fromText(BACKEND_CANISTER_ID) 
+  });
 };
 
 const container = {
@@ -26,6 +34,34 @@ const item = {
 };
 
 export function BoosterStats() {
+  const { data: boostRequests, isLoading: isLoadingBoosts } = useQuery({
+    queryKey: ['allBoostRequests'],
+    queryFn: async () => {
+      const actor = createActor();
+      return await actor.getAllBoostRequests();
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: boosterAccounts, isLoading: isLoadingBoosters } = useQuery({
+    queryKey: ['allBoosterAccounts'],
+    queryFn: async () => {
+      const actor = createActor();
+      return await actor.getAllBoosterAccounts();
+    },
+    refetchInterval: 30000,
+  });
+
+  // Calculate statistics
+  const stats = {
+    totalBoosters: boosterAccounts ? boosterAccounts.length : 0,
+    totalBoosts: boostRequests ? boostRequests.length : 0,
+    totalVolume: boostRequests ? 
+      boostRequests.reduce((sum: number, req: { amount: bigint }) => 
+        sum + Number(req.amount), 0) / 1e8 : 0,
+    averageBoostTime: "3 min", // Hardcoded as requested
+  };
+
   return (
     <section id="booster-network" className="bg-black py-20 md:py-28 relative overflow-hidden">
       {/* Animated gradient background */}
@@ -70,7 +106,7 @@ export function BoosterStats() {
         
         {/* Statistics Grid */}
         <motion.div
-          className="grid grid-cols-1 gap-8 sm:grid-cols-3 max-w-4xl mx-auto mb-16"
+          className="grid grid-cols-1 gap-8 sm:grid-cols-4 max-w-5xl mx-auto mb-16"
           variants={container}
           initial="hidden"
           whileInView="show"
@@ -78,21 +114,31 @@ export function BoosterStats() {
         >
           <StatCard 
             title="Active Boosters" 
-            value={boosterStats.totalBoosters.toString()} 
+            value={stats.totalBoosters.toString()} 
             icon={<Users className="h-8 w-8 text-blue-400" />}
             description="Service providers in our network"
+            isLoading={isLoadingBoosters}
           />
           <StatCard 
             title="Total Boosts" 
-            value={boosterStats.totalBoosts.toLocaleString()} 
+            value={stats.totalBoosts.toLocaleString()} 
             icon={<Zap className="h-8 w-8 text-purple-400" />}
             description="Successful conversions completed"
+            isLoading={isLoadingBoosts}
           />
           <StatCard 
             title="Volume Boosted" 
-            value={`₿ ${boosterStats.totalVolume.toFixed(2)}`} 
+            value={`₿ ${stats.totalVolume.toFixed(2)}`} 
             icon={<Bitcoin className="h-8 w-8 text-orange-400" />}
             description="Total Bitcoin processed"
+            isLoading={isLoadingBoosts}
+          />
+          <StatCard 
+            title="Average Boost Time" 
+            value={stats.averageBoostTime} 
+            icon={<Clock className="h-8 w-8 text-green-400" />}
+            description="Time to complete a boost"
+            isLoading={false}
           />
         </motion.div>
         
@@ -103,7 +149,7 @@ export function BoosterStats() {
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
           >
-            <Link to="/boost-lp">
+            <Link to="https://btvft-laaaa-aaaao-qkagq-cai.icp0.io/" target="_blank">
               <Button 
                 variant="outline" 
                 size="lg" 
@@ -124,12 +170,14 @@ function StatCard({
   title, 
   value, 
   icon,
-  description
+  description,
+  isLoading
 }: { 
   title: string; 
   value: string; 
   icon: React.ReactNode;
   description: string;
+  isLoading?: boolean;
 }) {
   return (
     <motion.div variants={item} className="relative">
@@ -140,7 +188,13 @@ function StatCard({
           </div>
         </div>
         <h3 className="text-lg font-medium text-gray-300 mb-1">{title}</h3>
-        <div className="text-3xl font-bold text-white mb-2">{value}</div>
+        <div className="text-3xl font-bold text-white mb-2">
+          {isLoading ? (
+            <div className="h-8 w-24 bg-gray-800 rounded animate-pulse mx-auto" />
+          ) : (
+            value
+          )}
+        </div>
         <p className="text-sm text-gray-400">{description}</p>
       </div>
     </motion.div>

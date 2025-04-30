@@ -113,7 +113,6 @@ actor class Main() {
 
   public shared(msg) func registerBoostRequest(
     amount: Types.Amount, 
-    fee: Types.Fee, 
     maxFeePercentage: Float, 
     confirmationsRequired: Nat, 
     preferredBooster: ?Principal

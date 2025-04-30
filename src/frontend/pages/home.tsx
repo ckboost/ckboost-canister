@@ -11,9 +11,9 @@ export function HomePage() {
       <Header />
       <main className="flex-1">
         <Hero />
+        <BoosterStats />
         <Features />
         <HowItWorks />
-        <BoosterStats />
       </main>
       <Footer />
     </>

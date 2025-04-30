@@ -198,20 +198,20 @@ export function Hero() {
                 exit={{ opacity: 0, y: -30, transition: { duration: 0.5 } }}
                 className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
               >
-                <Link to="/boost">
+                <Link to="https://testnet-faucet.ckboost.com" target="_blank">
                   <Button 
                     size="lg" 
                     className="min-w-[160px] bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 shadow-lg shadow-blue-500/20"
                   >
                     <span className="flex items-center">
-                      <span>Get Started</span>
+                      <span>Faucet</span>
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 ml-2">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </span>
                   </Button>
                 </Link>
-                <Link to="/boost-lp">
+                <Link to="https://btvft-laaaa-aaaao-qkagq-cai.icp0.io/" target="_blank">
                   <Button 
                     size="lg" 
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-lg shadow-blue-600/20 hover-lift"
@@ -224,65 +224,6 @@ export function Hero() {
             
           </AnimatePresence>
           
-
-          {/* Stats */}
-          <motion.div
-            custom={5}
-            variants={fadeUpVariants}
-            initial="hidden"
-            animate="visible"
-            className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-3 w-full"
-          >
-            {[
-              { 
-                label: "Total Boosted", 
-                value: "₿ 128.45",
-                icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-blue-400">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
-                )
-              },
-              { 
-                label: "Active Boosters", 
-                value: "24",
-                icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-blue-400">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                )
-              },
-              { 
-                label: "Average Boost Time", 
-                value: "15 min",
-                icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-blue-400">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                )
-              }
-            ].map((stat, index) => (
-              <motion.div 
-                key={index}
-                className="bg-black/20 backdrop-blur-sm rounded-lg p-6 border border-white/10 hover:border-white/20 transition-colors"
-                whileHover={{ 
-                  boxShadow: "0 0 20px rgba(59, 130, 246, 0.2)",
-                }}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-blue-500/10 p-2 rounded-full">
-                    {stat.icon}
-                  </div>
-                  <p className="text-sm font-medium text-white/60">{stat.label}</p>
-                </div>
-                <h3 className="text-3xl font-bold text-white">{stat.value}</h3>
-              </motion.div>
-            ))}
-          </motion.div>
         </div>
       </div>
       
