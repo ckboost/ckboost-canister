@@ -54,7 +54,6 @@ export function BoostPage() {
       const result = await backendActor.registerBoostRequest(
         BigInt(amountInSatoshis),
         feePercentage,
-        feePercentage,
         BigInt(confirmationsRequired),
         preferredBooster
       );

@@ -11,6 +11,7 @@ import { Button } from "../components/ui/button";
 import { RefreshCw, AlertCircle, Copy } from "lucide-react";
 import { Card, CardContent } from "../components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/ui/tooltip";
+import { useAgent } from "@nfid/identitykit/react";
 
 const BACKEND_CANISTER_ID = process.env.CANISTER_ID_BACKEND || "75egi-7qaaa-aaaao-qj6ma-cai";
 
@@ -22,15 +23,16 @@ const createActor = () => {
   });
 };
 
-const createUpdateActor = (identity: any) => {
+const createUpdateActor = (agent: any) => {
   return Actor.createActor<_SERVICE>(idlFactory, { 
-    agent: identity,
+    agent,
     canisterId: Principal.fromText(BACKEND_CANISTER_ID) 
   });
 };
 
 export function PendingBoostsPage() {
-  const { isAuthenticated, identity } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const agent = useAgent();
   const queryClient = useQueryClient();
 
   const [mutationError, setMutationError] = useState<string | null>(null);
@@ -46,31 +48,31 @@ export function PendingBoostsPage() {
     refetchInterval: 30000,
   });
 
-  const acceptBoostMutation = useMutation<{ ok : string } | { err : string }, Error, bigint>({
+  const acceptBoostMutation = useMutation<string, Error, bigint>({
     mutationFn: async (boostId: bigint) => {
-      if (!identity) throw new Error("Identity not available");
-      const actor = createUpdateActor(identity);
+      if (!agent) throw new Error("Agent not available");
+      const actor = createUpdateActor(agent);
       return await actor.acceptBoostRequest(boostId);
     },
     onSuccess: (result, boostId) => {
-      if ('ok' in result) {
-        setMutationSuccess(`Successfully accepted boost ${boostId.toString()}.`);
+      if (result.startsWith("OK")) {
+        setMutationSuccess(result);
         setMutationError(null);
         queryClient.invalidateQueries({ queryKey: ['pendingBoostRequests'] });
       } else {
-        setMutationError(`Failed to accept boost ${boostId.toString()}: ${result.err}`);
+        setMutationError(result);
         setMutationSuccess(null);
       }
     },
     onError: (error, boostId) => {
-      setMutationError(`Network error accepting boost ${boostId.toString()}: ${error.message}`);
+      setMutationError(`Network error accepting boost ${boostId}: ${error.message}`);
       setMutationSuccess(null);
     },
   });
 
   const handleAcceptBoost = (boostId: bigint) => {
-    if (!identity) {
-        setMutationError("Cannot accept boost: Wallet identity not ready.");
+    if (!agent) {
+        setMutationError("Cannot accept boost: Wallet agent not ready.");
         return;
     }
     setMutationError(null); 
@@ -204,7 +206,7 @@ export function PendingBoostsPage() {
                               size="sm" 
                               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                               onClick={() => handleAcceptBoost(request.id)}
-                              disabled={!identity || (acceptBoostMutation.isPending && acceptBoostMutation.variables === request.id)}
+                              disabled={!agent || (acceptBoostMutation.isPending && acceptBoostMutation.variables === request.id)}
                             >
                               {acceptBoostMutation.isPending && acceptBoostMutation.variables === request.id ? (
                                 <RefreshCw className="h-4 w-4 animate-spin" />

@@ -29,7 +29,6 @@ module {
     id: BoostId;
     owner: Principal;
     amount: Amount;
-    fee: Fee;
     receivedBTC: Amount;
     btcAddress: ?Text;
     subaccount: Subaccount;

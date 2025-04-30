@@ -92,13 +92,9 @@ module {
     };
 
     // Register a new boost request
-    public func registerBoostRequest(caller: Principal, amount: Types.Amount, fee: Types.Fee, maxFeePercentage: Float, confirmationsRequired: Nat, preferredBooster: ?Principal) : async Result.Result<Types.BoostRequest, Text> {
+    public func registerBoostRequest(caller: Principal, amount: Types.Amount, maxFeePercentage: Float, confirmationsRequired: Nat, preferredBooster: ?Principal) : async Result.Result<Types.BoostRequest, Text> {
       if (amount == 0) {
         return #err("Amount must be greater than 0");
-      };
-      
-      if (fee < 0.0 or fee > 1.0) {
-        return #err("Fee must be between 0% and 100%");
       };
       
       if (maxFeePercentage < 0.0 or maxFeePercentage > 2.0) {
@@ -114,7 +110,6 @@ module {
         id = boostId;
         owner = caller;
         amount = amount;
-        fee = fee;
         receivedBTC = 0;
         btcAddress = null;
         subaccount = subaccount;
@@ -161,7 +156,6 @@ module {
             id = request.id;
             owner = request.owner;
             amount = request.amount;
-            fee = request.fee;
             receivedBTC = receivedAmount;
             btcAddress = request.btcAddress;
             subaccount = request.subaccount;
@@ -194,7 +188,6 @@ module {
             id = request.id;
             owner = request.owner;
             amount = request.amount;
-            fee = request.fee;
             receivedBTC = request.receivedBTC;
             btcAddress = ?btcAddress;
             subaccount = request.subaccount;

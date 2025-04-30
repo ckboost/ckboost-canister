@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth as useNfidAuth } from '@nfid/identitykit/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     updateAuthState();
   };
   
-  const updateAuthState = () => {
+  const updateAuthState = useCallback(() => {
     const isLoading = nfidAuth.isConnecting;
     
     console.log("Auth state update - isConnecting:", isLoading);
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isAuthenticated: true,
           isLoading: false,
           refreshAuth,
-          identity: (nfidAuth as any).identity,
+          identity: (nfidAuth as any)?.identity,
         });
       } else {
         console.log("No user found in nfidAuth");
@@ -111,12 +111,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         refreshAuth,
       }));
     }
-  };
+
+    // --- Log the nfidAuth object --- 
+    console.log("AuthProvider - nfidAuth object:", nfidAuth);
+    // --- End Log ---
+
+  }, [nfidAuth.isConnecting, nfidAuth.user]);
 
   useEffect(() => {
     console.log("Auth context effect triggered");
     updateAuthState();
-  }, [nfidAuth.user, nfidAuth.isConnecting]);
+  }, [updateAuthState]);
 
   return (
     <AuthContext.Provider value={authState}>

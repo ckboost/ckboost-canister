@@ -154,7 +154,7 @@ export function HistoryPage() {
                               })()}
                             </td>
                             <td className="px-6 py-4 text-gray-300">{(Number(request.amount) / 10**8).toFixed(8)}</td>
-                            <td className="px-6 py-4 text-gray-300">{request.fee.toFixed(2)}%</td>
+                            <td className="px-6 py-4 text-gray-300">{request.maxFeePercentage.toFixed(2)}%</td>
                             <td className={`px-6 py-4 font-medium ${statusInfo.color}`}>
                               <div className="flex items-center gap-2">
                                 {statusInfo.icon}

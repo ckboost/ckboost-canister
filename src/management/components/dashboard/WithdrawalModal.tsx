@@ -7,6 +7,7 @@ import { Principal } from "@dfinity/principal";
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { idlFactory } from "../../../backend/declarations/backend.did.js";
 import { useAuth } from "../../lib/auth-context";
+import { useAgent } from "@nfid/identitykit/react";
 
 // --- Copied Definitions --- 
 const BACKEND_CANISTER_ID = "75egi-7qaaa-aaaao-qj6ma-cai";
@@ -32,6 +33,8 @@ export function WithdrawalModal({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { identity } = useAuth();
+  const agent = useAgent();
+  const [isAgentReady, setIsAgentReady] = useState(false);
 
   // Calculate available balance safely
   const availableBalance = boosterAccount?.actualBalance !== undefined 
@@ -84,21 +87,19 @@ export function WithdrawalModal({
       
       const backendActor = Actor.createActor(
         idlFactory,
-        { agent: identity, canisterId: Principal.fromText(BACKEND_CANISTER_ID) }
+        { agent, canisterId: Principal.fromText(BACKEND_CANISTER_ID) }
       );
       
-      const result = await backendActor.withdrawBoosterFunds(amountSatoshis);
+      const result : string = await backendActor.withdrawBoosterFunds(amountSatoshis) as string;
       
-      if ('ok' in (result as any)) {
-        setSuccessMessage(`Successfully initiated withdrawal of ${withdrawAmount} ckBTC.`);
+      if (result.startsWith("OK")) {
+        setSuccessMessage(result);
         setError(null);
         await new Promise(resolve => setTimeout(resolve, 1500));
-        onWithdrawalSuccess(); // Refresh parent
-        onClose(); // Close modal
-      } else if ('err' in (result as any)) {
-        throw new Error((result as any).err);
+        onWithdrawalSuccess();
+        onClose();
       } else {
-        throw new Error("Unknown response format from withdrawBoosterFunds");
+        throw new Error(result);
       }
     } catch (err) {
       console.error("Error withdrawing from booster account:", err);
