@@ -77,7 +77,7 @@ module {
                   case (#TemporarilyUnavailable(msg)) {
                     return #err("Service temporarily unavailable: " # msg);
                   };
-                  case (#GenericError({ error_message; error_code })) {
+                  case (#GenericError({ error_message; error_code = _ })) {
                     return #err("Error checking deposits: " # error_message);
                   };
                 };

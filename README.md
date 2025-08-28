@@ -1,20 +1,22 @@
 
-# ckBoost: Accelerating Bitcoin Transactions on Internet Computer
+# ckBoost Protocol: Accelerating Bitcoin to ckBTC Transactions
 
- 
-<div  align="center">
+<div align="center">
 
-<p><strong>Fast Bitcoin to ckBTC conversion for the Internet Computer ecosystem</strong></p>
+<p><strong>A decentralized protocol for instant Bitcoin liquidity on the Internet Computer</strong></p>
+
+[![Internet Computer](https://img.shields.io/badge/Internet_Computer-Protocol-blue)](https://internetcomputer.org/)
+[![ckBTC](https://img.shields.io/badge/ckBTC-Integration-orange)](https://internetcomputer.org/docs/current/developer-docs/integrations/bitcoin/ckbtc)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/Documentation-docs.ckboost.com-green)](https://docs.ckboost.com/)
 
 </div>
 
-  
+## 🚀 Protocol Overview
 
-## 🚀 Overview
+ckBoost is a **decentralized backend protocol** built on the Internet Computer that solves the critical problem of slow Bitcoin to ckBTC conversion times. By creating a liquidity pool marketplace, ckBoost enables instant Bitcoin transactions, reducing confirmation times from **2 hours to ~15 minutes**.
 
-  
-
-ckBoost is platform built on the Internet Computer Protocol (ICP) that solves a critical problem of the ecosystem: transaction speed for chain-key wrapping. By creating a liquidity pool system for ckBTC (chain-key Bitcoin, the Bitcoin twin on Internet Computer), ckBoost enables near-instant Bitcoin transactions, reducing confirmation times from 2 hours to just 15 minutes.
+**This is a protocol-only implementation** - no frontend included. It's designed to be integrated by wallets, dApps, and other applications that need fast Bitcoin bridging.
   
 
 ## 🔍 The Problem
@@ -47,143 +49,104 @@ ckBoost introduces a novel approach to this problem through a two-sided marketpl
 - Seamless user experience with real-time transaction tracking
 
 
-## 🛠️ Tech Stack
+## 🛠️ Protocol Stack
 
--  **Backend**: [Motoko](https://internetcomputer.org/docs/current/motoko/main/motoko) on the [Internet Computer](https://internetcomputer.org/)
-
--  **Frontend**: [React 19](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS 4](https://tailwindcss.com/)
-
--  **Blockchain Integration**: [ckBTC](https://internetcomputer.org/docs/current/developer-docs/integrations/bitcoin/ckbtc) (chain-key Bitcoin)
-
--  **Authentication**: Internet Identity, NFID
-
--  **Build Tools**: [Vite](https://vitejs.dev/), [DFX](https://internetcomputer.org/docs/current/developer-docs/build/install-upgrade-remove)
+- **Smart Contracts**: [Motoko](https://internetcomputer.org/docs/current/motoko/main/motoko) on the [Internet Computer](https://internetcomputer.org/)
+- **Blockchain Integration**: [ckBTC](https://internetcomputer.org/docs/current/developer-docs/integrations/bitcoin/ckbtc) (chain-key Bitcoin) 
+- **Standards**: ICRC-1 for token transfers
+- **Build Tools**: [DFX](https://internetcomputer.org/docs/current/developer-docs/build/install-upgrade-remove) (Internet Computer SDK)
 
   
 
-## 🏗️ Architecture
+## 🏗️ Protocol Architecture
 
-ckBoost leverages the Internet Computer Protocol and its chain-key technology to create a secure bridge between Bitcoin and ICP. The platform consists of:
+ckBoost leverages the Internet Computer Protocol and its chain-key technology to create a trustless bridge between Bitcoin and ckBTC. The protocol consists of:
 
-  
+1. **Core Canister**: Written in Motoko, handles all protocol logic including liquidity pools, boost execution, and fund management.
 
-1.  **Canister**: Written in Motoko, these handle the core logic of the platform, including pool creation, deposit management, and transaction boosting.
+2. **ckBTC Integration**: Direct integration with the ckBTC minter for Bitcoin monitoring and ckBTC minting.
 
-2.  **ckBTC Integration**: Utilizes the ckBTC minter to facilitate the conversion between Bitcoin and ckBTC.
+3. **Modular Design**: Clean separation of concerns with dedicated modules for ledger operations, validation, and minting workflows.
 
-3.  **Modern Frontend**: Built with React, TypeScript, and Tailwind CSS, providing a responsive and intuitive user interface.
-
-4.  **Secure Authentication**: Integrated with Internet Identity and NFID for secure user authentication.
+4. **ICRC-1 Compliance**: Standard token operations for seamless integration with wallets and other protocols.
 
 
-## 🚀 Getting Started
-
-  
+## 🚀 Protocol Deployment
 
 ### Prerequisites
 
-
-- [Node.js](https://nodejs.org/) (v18 or higher)
-
 - [DFX](https://internetcomputer.org/docs/current/developer-docs/build/install-upgrade-remove) (Internet Computer SDK)
+- [IC Wallet](https://nns.ic0.app/) with ICP for canister deployment (for mainnet)
 
-- [IC Wallet](https://nns.ic0.app/) with some ICP for canister deployment (for production)
-
-  
-
-### Installation
-
-  
+### Local Development
 
 1. Clone the repository:
-
 ```bash
-
-git clone https://github.com/LevanIlashvili/ckboost-canister
-
+git clone https://github.com/ckboost/ckboost-canister
 cd ckboost-canister
-
 ```
-
-  
 
 2. Install dependencies:
-
 ```bash
-
 npm install
-
 ```
 
-  
-
-3. Set up environment variables:
-
+3. Start local Internet Computer replica:
 ```bash
-
-cp .env.example .env
-
+npm run start
 ```
 
-Edit the `.env` file with your configuration.
-
-  
-
-### Development
-
-  
-
-1. Start a local Internet Computer replica:
-
+4. Deploy the protocol locally:
 ```bash
-
-dfx start --background
-
-```
-
-  
-
-2. Deploy the canisters to the local replica:
-
-```bash
-
 npm run deploy:local
-
 ```
 
-  
-
-3. Start the development server:
-
+5. Generate type declarations:
 ```bash
-
-npm run dev
-
+npm run generate
 ```
 
-  
+### Mainnet Deployment
 
-4. Open your browser and navigate to `http://localhost:5173`
-
-  
-
-### Production Deployment
-
-  
-
-1. Deploy to the Internet Computer mainnet:
-
+Deploy to Internet Computer mainnet:
 ```bash
-
 npm run deploy:ic
-
 ```
 
-  
+## 📚 Protocol Integration
 
-## 🌐 Live Demo
+### Canister Interface
 
-Visit our live demo at [72fa4-siaaa-aaaao-qj6mq-cai.icp0.io](https://72fa4-siaaa-aaaao-qj6mq-cai.icp0.io/)
+The ckBoost protocol exposes a comprehensive API for integration. Key functions include:
+
+- `registerBoostRequest()` - Create new boost requests
+- `acceptBoostRequest()` - Provide instant liquidity
+- `registerBoosterAccount()` - Become a liquidity provider
+- `triggerMintingForMyBoostRequest()` - Fallback minting for users
+- `reclaimMintedFunds()` - Reclaim funds after minting
+
+### Integration Examples
+
+**JavaScript/TypeScript Integration:**
+```javascript
+import { Actor } from "@dfinity/agent";
+import { idlFactory } from "./declarations/backend";
+
+const ckBoostActor = Actor.createActor(idlFactory, {
+  agent: your_agent,
+  canisterId: "your_canister_id"
+});
+
+// Create a boost request
+const result = await ckBoostActor.registerBoostRequest(
+  amount_in_satoshis,
+  max_fee_percentage,
+  confirmations_required,
+  preferred_booster
+);
+```
+
+**Complete Documentation:** Visit [docs.ckboost.com](https://docs.ckboost.com/) for comprehensive integration guides, API reference, and protocol documentation.
 
 
 ---

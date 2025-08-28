@@ -10,6 +10,21 @@ type BoostStatus = variant {
   active;
   completed;
   cancelled;
+  boosted;
+  minting;
+};
+
+type BoosterAccount = record {
+  owner: principal;
+  feePercentage: Fee;
+  subaccount: Subaccount;
+  availableBalance: Amount;
+  totalDeposited: Amount;
+  totalWithdrawn: Amount;
+  totalBoosted: Amount;
+  totalFeesEarned: Amount;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 };
 
 type BoosterPool = record {
@@ -42,6 +57,11 @@ type BoostRequestResult = variant {
   err: text;
 };
 
+type BoosterAccountResult = variant {
+  ok: BoosterAccount;
+  err: text;
+};
+
 type BoosterPoolResult = variant {
   ok: BoosterPool;
   err: text;
@@ -56,7 +76,7 @@ service : {
   // Helper functions
   "ckBTCToSatoshis": (float64) -> (nat);
   "satoshisToCkBTC": (nat) -> (float64);
-  "getCanisterPrincipal": () -> (text) query;
+  "getCanisterPrincipal": () -> (principal) query;
   "getDirectBTCAddress": () -> (text);
 
   // Original functions
@@ -64,15 +84,32 @@ service : {
   "whoami": () -> (text);
   
   // Boost request functions
-  "registerBoostRequest": (Amount, Fee) -> (BoostRequestResult);
+  "registerBoostRequest": (Amount, Fee, nat, opt principal) -> (BoostRequestResult);
+  "acceptBoostRequest": (BoostId) -> (text);
   "updateReceivedBTC": (BoostId, Amount) -> (BoostRequestResult);
   "getBoostRequestBTCAddress": (BoostId) -> (TextResult);
   "checkBTCDeposit": (BoostId) -> (BoostRequestResult);
   "getBoostRequest": (BoostId) -> (opt BoostRequest) query;
   "getUserBoostRequests": (principal) -> (vec BoostRequest) query;
   "getAllBoostRequests": () -> (vec BoostRequest) query;
+  "getPendingBoostRequests": () -> (vec BoostRequest) query;
+  "getBoostedRequests": () -> (vec BoostRequest) query;
+  "getMintingRequests": () -> (vec BoostRequest) query;
   
-  // Booster pool functions
+  // Booster account functions
+  "registerBoosterAccount": (Fee) -> (BoosterAccountResult);
+  "updateBoosterDeposit": (principal, Amount) -> (BoosterAccountResult);
+  "withdrawBoosterFunds": (Amount) -> (text);
+  "getBoosterAccount": (principal) -> (opt BoosterAccount) query;
+  "getAllBoosterAccounts": () -> (vec BoosterAccount) query;
+  
+  // Minting operations
+  "triggerMintingForMyBoostRequest": (BoostId) -> (text);
+  "claimMintedCKBTC": (BoostId) -> (text);
+  "triggerMintingForBoostReclaim": (BoostId) -> (text);
+  "reclaimMintedFunds": (BoostId) -> (text);
+  
+  // Legacy booster pool functions (deprecated)
   "registerBoosterPool": (Fee) -> (BoosterPoolResult);
   "getBoosterPool": (BoosterPoolId) -> (opt BoosterPool) query;
   "getUserBoosterPools": (principal) -> (vec BoosterPool) query;

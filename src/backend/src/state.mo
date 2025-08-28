@@ -1,5 +1,4 @@
 import HashMap "mo:base/HashMap";
-import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Principal "mo:base/Principal";
 
