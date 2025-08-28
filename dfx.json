@@ -6,32 +6,6 @@
       "declarations": {
         "output": "src/backend/declarations"
       }
-    },
-    "frontend": {
-      "dependencies": [
-        "backend"
-      ],
-      "source": [
-        "src/frontend/dist"
-      ],
-      "type": "assets",
-      "candid": "src/frontend/frontend.did",
-      "declarations": {
-        "output": "src/frontend/declarations"
-      }
-    },
-    "management": {
-      "dependencies": [
-        "backend"
-      ],
-      "source": [
-        "src/management/dist"
-      ],
-      "type": "assets",
-      "candid": "src/management/management.did",
-      "declarations": {
-        "output": "src/management/declarations"
-      }
     }
   },
   "defaults": {

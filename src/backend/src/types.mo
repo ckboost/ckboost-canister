@@ -1,5 +1,4 @@
 import Principal "mo:base/Principal";
-import Time "mo:base/Time";
 import Blob "mo:base/Blob";
 
 module {
@@ -10,9 +9,11 @@ module {
   public type Fee = Float;
 
   public type BoostStatus = {
-    #pending;
-    #active;
-    #completed;
+    #pending;      // Waiting for BTC deposit or booster acceptance
+    #active;       // BTC received, ready for boosting
+    #boosted;      // Booster provided ckBTC to user, waiting for fund reclamation  
+    #minting;      // Minting process triggered, waiting for ckBTC to be minted
+    #completed;    // Fully completed - funds claimed/reclaimed
     #cancelled;
   };
 
@@ -29,7 +30,6 @@ module {
     id: BoostId;
     owner: Principal;
     amount: Amount;
-    fee: Fee;
     receivedBTC: Amount;
     btcAddress: ?Text;
     subaccount: Subaccount;

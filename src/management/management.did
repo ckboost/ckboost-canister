@@ -1,5 +1,0 @@
-// Minimal DID file for the management asset canister
-// Asset canisters don't typically expose callable methods via DID,
-// but the file is required by dfx.
-
-service : {} -> {} 
